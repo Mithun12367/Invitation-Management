@@ -4,6 +4,12 @@
 
 A digital invitation management platform for the Bangladesh Cultural Festival at Hangzhou Dianzi University (HDU), Hangzhou, China.
 
+## Implementation Status
+
+The architecture below is the intended product scope. The current working frontend implements the admin sign-in, dashboard, invitation creation/listing, teacher and RSVP views, event details, and token-based invitation/RSVP flow. The remaining planned areas—including the public festival landing page, QR studio, card editor, templates, and analytics—are not implemented yet and should be treated as future work, not completed features.
+
+The initial RSVP flow uses the `admin-ops`, `validate-invitation`, and `submit-rsvp` Edge Functions. Teacher RSVP submission verifies the invitation token again on the server before writing the response.
+
 ## Architecture Diagram
 
 ```

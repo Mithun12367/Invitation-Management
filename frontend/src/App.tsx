@@ -1170,6 +1170,23 @@ interface PrintableInvitationDesign {
   backgroundOverlay: number;
 }
 
+const printableAccentColors = [
+  { name: 'Festival rose', value: '#cb5464' },
+  { name: 'Festival red', value: '#f42a41' },
+  { name: 'Terracotta', value: '#c7664d' },
+  { name: 'Bronze', value: '#9a6849' },
+  { name: 'Festival gold', value: '#d4af37' },
+  { name: 'Lime', value: '#cdd34f' },
+  { name: 'Forest green', value: '#006a4e' },
+  { name: 'Sage', value: '#5f9275' },
+  { name: 'Teal', value: '#18a3a5' },
+  { name: 'Sky blue', value: '#3286c8' },
+  { name: 'Navy', value: '#303f9f' },
+  { name: 'Violet', value: '#8056ad' },
+  { name: 'Orchid', value: '#bc5b9e' },
+  { name: 'Charcoal', value: '#3d4147' },
+];
+
 const printDesignStorageKey = 'hdu-print-invitation-design-v1';
 const defaultPrintableInvitationDesign: PrintableInvitationDesign = {
   brandText: 'HDU CULTURAL FESTIVAL',
@@ -1200,6 +1217,7 @@ function InvitationPrintSettingsEditor({
   const [storageReady, setStorageReady] = useState(false);
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
   const [design, setDesign] = useState<PrintableInvitationDesign>(defaultPrintableInvitationDesign);
+  const [accentPaletteOpen, setAccentPaletteOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -1354,7 +1372,45 @@ function InvitationPrintSettingsEditor({
                 <label>Invitation message<textarea rows={5} maxLength={2000} value={design.message} onChange={(event) => updateDesign('message', event.target.value)} /></label>
                 <label>Closing message<input value={design.closing} maxLength={300} onChange={(event) => updateDesign('closing', event.target.value)} /></label>
                 <label>Footer<input value={design.footer} maxLength={200} onChange={(event) => updateDesign('footer', event.target.value)} /></label>
-                <label className="print-color-field">Accent color<input type="color" value={design.accentColor} onChange={(event) => updateDesign('accentColor', event.target.value)} /></label>
+                <div className="print-color-field">
+                  <span>Accent color</span>
+                  <button
+                    className="print-color-trigger"
+                    type="button"
+                    aria-label="Open accent color palette"
+                    aria-expanded={accentPaletteOpen}
+                    aria-controls="print-accent-color-palette"
+                    onClick={() => setAccentPaletteOpen((open) => !open)}
+                  >
+                    <span style={{ backgroundColor: design.accentColor }} />
+                    <Pencil size={14} />
+                  </button>
+                  {accentPaletteOpen && (
+                    <div className="print-color-palette" id="print-accent-color-palette" role="group" aria-label="Choose an accent color">
+                      <div className="print-color-swatches">
+                        {printableAccentColors.map((color) => (
+                          <button
+                            key={color.value}
+                            className="print-color-swatch"
+                            type="button"
+                            aria-label={color.name}
+                            aria-pressed={design.accentColor.toLowerCase() === color.value}
+                            title={color.name}
+                            style={{ backgroundColor: color.value }}
+                            onClick={() => {
+                              updateDesign('accentColor', color.value);
+                              setAccentPaletteOpen(false);
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <label className="print-custom-color">
+                        Custom color
+                        <input type="color" value={design.accentColor} onChange={(event) => updateDesign('accentColor', event.target.value)} />
+                      </label>
+                    </div>
+                  )}
+                </div>
                 <div className="print-layout-controls">
                   <label>
                     Text alignment

@@ -454,7 +454,17 @@ input:focus, select:focus, textarea:focus { outline: 2px solid rgb(155 106 75 / 
 .print-logo-toggle span { color: #554c43; font-size: 10px; font-weight: 650; }
 .print-design-fields input, .print-design-fields textarea, .print-design-fields select { width: 100%; }
 .print-design-fields input[type="file"] { min-height: 34px; padding: 6px; font-size: 10px; }
-.print-design-fields input[type="color"] { width: 48px; min-height: 32px; padding: 3px; }
+.print-color-field { position: relative; display: grid; justify-items: start; gap: 7px; color: #554c43; font-size: 10px; font-weight: 650; }
+.print-color-trigger { position: relative; display: grid; width: 42px; height: 32px; place-items: center; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: white; cursor: pointer; }
+.print-color-trigger > span { position: absolute; inset: 4px; border-radius: 5px; }
+.print-color-trigger svg { z-index: 1; color: white; filter: drop-shadow(0 1px 2px rgb(0 0 0 / 80%)); }
+.print-color-palette { display: grid; gap: 9px; width: min(100%, 286px); padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: #fffdfa; box-shadow: var(--shadow); }
+.print-color-swatches { display: grid; grid-template-columns: repeat(auto-fit, 27px); gap: 8px; }
+.print-color-swatch { width: 27px; height: 27px; padding: 0; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #d9d0c6; cursor: pointer; }
+.print-color-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink); }
+.print-color-swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.print-design-fields label.print-custom-color { display: flex; align-items: center; gap: 8px; color: #554c43; font-size: 9px; font-weight: 600; }
+.print-design-fields label.print-custom-color input[type="color"] { width: 42px; min-height: 30px; padding: 3px; }
 .print-design-fields small { color: var(--muted); font-size: 9px; font-weight: 400; }
 .print-remove-background { justify-self: start; }
 .print-status { color: var(--muted); font-size: 10px; }

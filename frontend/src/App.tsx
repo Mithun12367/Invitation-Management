@@ -56,6 +56,7 @@ import {
   deleteInvitation,
   deleteTeacher,
   fetchPublicInvitation,
+  fetchWeChatNickname,
   fetchPublicSettings,
   saveInvitationLetterDesign,
   saveAppLogo,
@@ -67,6 +68,7 @@ import {
   updateEvent,
   updateInvitation,
   updatePublicSettings,
+  getWeChatAuthorizationUrl,
 } from './services/api';
 import type { DashboardStats, Event, EventFormData, Invitation, InvitationLandingPageConfig, PublicSettings, RSVP, Teacher, TeacherFormData, ValidateInvitationResponse } from './types';
 
@@ -128,6 +130,10 @@ function normalizeHeader(value: string): string {
 
 function isVideoAnimation(url: string): boolean {
   return /\.(mp4|webm)(?:[?#].*)?$/i.test(url);
+}
+
+function isWeChatBrowser(): boolean {
+  return /micromessenger/i.test(navigator.userAgent);
 }
 
 const defaultLandingPageConfig: InvitationLandingPageConfig = {
@@ -2143,17 +2149,100 @@ function toLocalDateTimeValue(value: string): string {
   return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
 }
 
+function InvitationEnvelopeLoader({ onComplete }: { onComplete: () => void }) {
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) onComplete();
+  }, [onComplete]);
+
+  return (
+    <div className="invitation-envelope-loader" role="status" aria-label="Loading invitation">
+      <div className="qr-envelope-scene" aria-hidden="true">
+        <div className="qr-envelope">
+          <div className="qr-envelope-back" />
+          <div className="qr-envelope-sheet qr-envelope-sheet-back" />
+          <div className="qr-envelope-sheet qr-envelope-sheet-middle" />
+          <div className="qr-envelope-sheet qr-envelope-sheet-front" onAnimationEnd={onComplete}>
+            <span>YOU’RE INVITED</span>
+            <i />
+            <i />
+            <i />
+          </div>
+          <div className="qr-envelope-flap" />
+          <div className="qr-envelope-front" />
+          <div className="qr-envelope-seal">H</div>
+        </div>
+      </div>
+      <span className="invitation-envelope-loader-caption">An invitation for you</span>
+      <span className="visually-hidden">Loading invitation</span>
+    </div>
+  );
+}
+
+function TeacherEnvelopeIntro({ ready, onOpen }: { ready: boolean; onOpen: () => void }) {
+  const [opening, setOpening] = useState(false);
+
+  function openInvitation() {
+    if (!ready || opening) return;
+    setOpening(true);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) onOpen();
+  }
+
+  return (
+    <div className="qr-envelope-intro">
+      <p className="qr-envelope-intro-brand">A celebration of cultures · Bangladesh × China</p>
+      <div className={`qr-envelope-intro-scene${opening ? ' is-opening' : ''}`}>
+        <div className="qr-envelope-intro-wrap" aria-hidden="true">
+          <div className="qr-envelope-intro-back" />
+          <div className="qr-envelope-intro-left" />
+          <div className="qr-envelope-intro-right" />
+          <div className="qr-envelope-intro-bottom" />
+          <div className="qr-envelope-intro-preview">
+            <div>
+              <small>University cultural festival</small>
+              <strong>Across<br />Cultures</strong>
+              <span>Honouring teachers · Sharing traditions</span>
+            </div>
+          </div>
+          <div
+            className="qr-envelope-intro-flap"
+            onTransitionEnd={(event) => {
+              if (opening && event.propertyName === 'transform') onOpen();
+            }}
+          />
+          <div className="qr-envelope-intro-seal" />
+          <div className="qr-envelope-intro-seal-half left" />
+          <div className="qr-envelope-intro-seal-half right" />
+        </div>
+        <button
+          className="qr-envelope-intro-open"
+          type="button"
+          disabled={!ready || opening}
+          onClick={openInvitation}
+          aria-label="Break the seal and open the teacher invitation"
+        />
+      </div>
+      <p className="qr-envelope-intro-note" role="status">
+        {opening ? 'Your invitation is unfolding…' : ready ? 'Tap to break the seal & open your invitation' : 'Preparing your invitation…'}
+      </p>
+    </div>
+  );
+}
+
 function PublicInvitationPage() {
   const { token = '' } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [event, setEvent] = useState<Event | null>(null);
   const [welcomeMessage, setWelcomeMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [envelopeComplete, setEnvelopeComplete] = useState(false);
   const [error, setError] = useState('');
   const [guestName, setGuestName] = useState('');
-  const [guestCount, setGuestCount] = useState(1);
+  const [wechatAuthLoading, setWechatAuthLoading] = useState(false);
   const [response, setResponse] = useState<'accepted' | 'maybe' | 'declined'>('accepted');
   const [busy, setBusy] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const wechatOAuthStarted = useRef(false);
 
   useEffect(() => {
     fetchPublicInvitation(token)
@@ -2165,6 +2254,88 @@ function PublicInvitationPage() {
       .finally(() => setLoading(false));
   }, [token]);
 
+  useEffect(() => {
+    if (loading || !event) return;
+
+    const query = new URLSearchParams(location.search);
+    const code = query.get('code');
+    const oauthError = query.get('errcode') || query.get('error');
+    const stateKey = `public-rsvp-wechat-state:${token}`;
+
+    if ((code || oauthError) && wechatOAuthStarted.current) return;
+    if (code) {
+      wechatOAuthStarted.current = true;
+      let expectedState: string | null;
+      try {
+        expectedState = window.sessionStorage.getItem(stateKey);
+        window.sessionStorage.removeItem(stateKey);
+      } catch (cause) {
+        setError(`WeChat name could not be verified: ${messageFrom(cause)}. Enter your name manually.`);
+        navigate(location.pathname, { replace: true });
+        return;
+      }
+
+      navigate(location.pathname, { replace: true });
+      if (!expectedState || expectedState !== query.get('state')) {
+        setError('WeChat sign-in could not be verified. Please enter your name manually.');
+        return;
+      }
+
+      setWechatAuthLoading(true);
+      fetchWeChatNickname(code)
+        .then(setGuestName)
+        .catch((cause) => setError(`WeChat name could not be loaded: ${messageFrom(cause)}. Enter your name manually.`))
+        .finally(() => setWechatAuthLoading(false));
+      return;
+    }
+
+    if (oauthError) {
+      wechatOAuthStarted.current = true;
+      let cleanupMessage = '';
+      try {
+        window.sessionStorage.removeItem(stateKey);
+      } catch (cause) {
+        cleanupMessage = ` ${messageFrom(cause)}`;
+      }
+      navigate(location.pathname, { replace: true });
+      setError(`WeChat sign-in was not completed. Please enter your name manually.${cleanupMessage}`);
+      return;
+    }
+
+    if (!isWeChatBrowser() || wechatOAuthStarted.current) return;
+    wechatOAuthStarted.current = true;
+
+    const state = crypto.randomUUID();
+    try {
+      window.sessionStorage.setItem(stateKey, state);
+    } catch (cause) {
+      setError(`WeChat sign-in could not be started: ${messageFrom(cause)}. Enter your name manually.`);
+      return;
+    }
+
+    const redirectUri = new URL(location.pathname, window.location.origin).toString();
+    setWechatAuthLoading(true);
+    getWeChatAuthorizationUrl(redirectUri, state)
+      .then((authorizationUrl) => {
+        const destination = new URL(authorizationUrl);
+        if (destination.origin !== 'https://open.weixin.qq.com') {
+          throw new Error('Unexpected WeChat authorization address.');
+        }
+        window.location.assign(destination.toString());
+      })
+      .catch((cause) => {
+        try {
+          window.sessionStorage.removeItem(stateKey);
+        } catch (storageCause) {
+          setError(`WeChat sign-in failed: ${messageFrom(cause)}. Name storage also failed: ${messageFrom(storageCause)}.`);
+          setWechatAuthLoading(false);
+          return;
+        }
+        setError(`WeChat sign-in failed: ${messageFrom(cause)}. Enter your name manually.`);
+        setWechatAuthLoading(false);
+      });
+  }, [event, loading, location.pathname, location.search, navigate, token]);
+
   async function sendPublicRSVP(eventSubmit: FormEvent<HTMLFormElement>) {
     eventSubmit.preventDefault();
     if (!event) return;
@@ -2174,7 +2345,7 @@ function PublicInvitationPage() {
       await submitRSVP({
         event_id: event.id,
         guest_name: guestName,
-        guest_count: guestCount,
+        guest_count: 1,
         response,
         invitation_category: 'public',
         token_hash: token,
@@ -2190,7 +2361,7 @@ function PublicInvitationPage() {
   return (
     <main className="invite-screen">
       <div className="invite-brand"><Brand /></div>
-      {loading ? <div className="invite-card invite-loading">Preparing your invitation…</div> : error && !event ? <div className="invite-card invite-error"><span className="event-card-icon"><DoorOpen size={20} /></span><h1>Invitation unavailable</h1><p>{error}</p></div> : event ? (
+      {loading || !envelopeComplete || wechatAuthLoading ? <InvitationEnvelopeLoader onComplete={() => setEnvelopeComplete(true)} /> : error && !event ? <div className="invite-card invite-error"><span className="event-card-icon"><DoorOpen size={20} /></span><h1>Invitation unavailable</h1><p>{error}</p></div> : event ? (
         <article className="invite-card">
           <span className="eyebrow">PUBLIC INVITATION</span>
           <div className="invite-decor">✳</div>
@@ -2205,9 +2376,8 @@ function PublicInvitationPage() {
           ) : (
             <form className="form-stack rsvp-form" onSubmit={sendPublicRSVP}>
               <h2>Will you join us?</h2>
-              <label>Your name<input required value={guestName} onChange={(e) => setGuestName(e.target.value)} /></label>
+              <label>Your name<input required maxLength={150} value={guestName} onChange={(e) => setGuestName(e.target.value)} /><small className="field-help">Your WeChat name fills automatically when opened in WeChat. Otherwise, enter your name.</small></label>
               <label>Response<select value={response} onChange={(e) => setResponse(e.target.value as typeof response)}><option value="accepted">Accept with pleasure</option><option value="maybe">Maybe</option><option value="declined">Unable to attend</option></select></label>
-              {response !== 'declined' && <label>Number of guests<input type="number" min={1} max={20} step={1} required value={guestCount} onChange={(e) => setGuestCount(Math.max(1, Number(e.target.value)))} /></label>}
               {error && <Notice tone="error">{error}</Notice>}
               <button className="button button-primary button-wide" disabled={busy}>{busy ? 'Sending response…' : 'Send RSVP'}<Send size={16} /></button>
             </form>
@@ -2224,10 +2394,10 @@ function InvitationPage() {
   const { logoUrl } = useAppBranding();
   const [invitation, setInvitation] = useState<ValidateInvitationResponse['invitation'] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [envelopeComplete, setEnvelopeComplete] = useState(false);
   const [error, setError] = useState('');
   const [response, setResponse] = useState<'accepted' | 'maybe' | 'declined'>('accepted');
   const [guestName, setGuestName] = useState('');
-  const [guestCount, setGuestCount] = useState(1);
   const [busy, setBusy] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [rsvpOpen, setRsvpOpen] = useState(false);
@@ -2246,6 +2416,27 @@ function InvitationPage() {
       .catch((cause) => setError(messageFrom(cause)))
       .finally(() => setLoading(false));
   }, [token]);
+
+  useEffect(() => {
+    if (loading || !envelopeComplete) return;
+
+    const revealTargets = document.querySelectorAll<HTMLElement>('.qr-template [data-qr-reveal]');
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
+      revealTargets.forEach((element) => element.classList.add('qr-template-visible'));
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('qr-template-visible');
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.14 });
+    revealTargets.forEach((element) => observer.observe(element));
+
+    return () => observer.disconnect();
+  }, [loading, envelopeComplete]);
 
   const event = invitation?.event;
   const teacher = invitation?.teacher;
@@ -2282,7 +2473,7 @@ function InvitationPage() {
         invitation_id: invitation.id,
         event_id: event.id,
         guest_name: guestName,
-        guest_count: guestCount,
+        guest_count: 1,
         response,
         invitation_category: 'teacher',
         token,
@@ -2345,8 +2536,8 @@ function InvitationPage() {
   }
 
   return (
-    <main className="invite-screen festival-invite-screen">
-      {loading ? <div className="invite-card invite-loading">Preparing your invitation…</div> : error && !invitation ? <div className="invite-card invite-error"><span className="event-card-icon"><DoorOpen size={20} /></span><h1>Invitation unavailable</h1><p>{error}</p></div> : invitation && event ? (
+    <main className={`invite-screen festival-invite-screen qr-template${envelopeComplete ? ' qr-template-page-reveal' : ''}`}>
+      {!envelopeComplete ? <TeacherEnvelopeIntro ready={!loading} onOpen={() => setEnvelopeComplete(true)} /> : error && !invitation ? <div className="invite-card invite-error"><span className="event-card-icon"><DoorOpen size={20} /></span><h1>Invitation unavailable</h1><p>{error}</p></div> : invitation && event ? (
         <>
           {page.page_background_url && (
             <div className="festival-page-background" aria-hidden="true">
@@ -2358,83 +2549,133 @@ function InvitationPage() {
           )}
           {page.confetti_enabled && <div className="festival-confetti" aria-hidden="true">{Array.from({ length: 18 }, (_, index) => <i key={index} />)}</div>}
           {page.music_url && <audio ref={audioRef} src={page.music_url} loop onEnded={() => setMusicPlaying(false)} />}
-          <header className="festival-page-header">
-            {logoUrl
-              ? <img className="festival-logo" src={logoUrl} alt="University logo" />
-              : <div className="festival-logo festival-logo-placeholder" aria-label="University logo">HDU</div>}
-            <button className="festival-audio-toggle" type="button" onClick={() => void toggleMusic()} disabled={!page.music_url} aria-label={musicPlaying ? 'Pause background music' : 'Play background music'} title={page.music_url ? 'Toggle background music' : 'Upload background music from the invitation editor'}>
-              {musicPlaying ? <Volume2 size={24} /> : <VolumeX size={24} />}
-            </button>
-          </header>
-          <div className="festival-university-heading">{page.university_heading}</div>
-          <h1 className="festival-main-title">{page.festival_title}</h1>
-          <p className="festival-tagline">{page.tagline}</p>
-          {error && <div className="festival-inline-error"><Notice tone="error">{error}</Notice></div>}
-          <article className="festival-invite-card">
-            <div className="festival-invite-badge">{page.invitation_badge}</div>
-            <div className="festival-recipient">
-              <h2>{guestHeading || 'Distinguished Guest'}</h2>
-              {teacher?.department && <p>{teacher.department}</p>}
+          <section className="qr-template-hero">
+            <header className="qr-template-header" data-qr-reveal="">
+              <a className="qr-template-brand" href="#invitation-top" aria-label={page.university_heading}>
+                {logoUrl
+                  ? <img src={logoUrl} alt="" />
+                  : <span className="qr-template-logo-placeholder">HDU</span>}
+                <span>{page.university_heading}</span>
+              </a>
+              <nav aria-label="Invitation navigation">
+                <a href="#event-details">Event details</a>
+                <a href="#rsvp">RSVP</a>
+                <button className="qr-template-audio" type="button" onClick={() => void toggleMusic()} disabled={!page.music_url} aria-label={musicPlaying ? 'Pause background music' : 'Play background music'} title={page.music_url ? 'Toggle background music' : 'No background music set'}>
+                  {musicPlaying ? <Volume2 size={17} /> : <VolumeX size={17} />}
+                </button>
+              </nav>
+            </header>
+            {error && <div className="qr-template-error"><Notice tone="error">{error}</Notice></div>}
+            <div className="qr-template-hero-content" id="invitation-top" data-qr-reveal="">
+              <p className="qr-template-eyebrow">{page.invitation_badge}</p>
+              <h1>{page.festival_title}</h1>
+              <p className="qr-template-tagline">{page.tagline}</p>
+              <article className="qr-template-cover">
+                <span className="qr-template-cover-kicker">{page.university_heading}</span>
+                <p className="qr-template-cover-invite">You are warmly invited</p>
+                <h2>{guestHeading || 'Distinguished Guest'}</h2>
+                {teacher?.department && <p className="qr-template-cover-department">{teacher.department}</p>}
+                <p className="qr-template-cover-message">{invitation.letter_content || teacher?.personalized_message || `Please join us for ${event.title}. We would be honored by your presence.`}</p>
+                {eventDateLabel && <p className="qr-template-cover-date">{eventDateLabel}{eventTimeLabel ? ` · ${eventTimeLabel}` : ''}</p>}
+              </article>
+              <a className="qr-template-scroll-link" href="#welcome">Discover the invitation <span aria-hidden="true">↓</span></a>
             </div>
-            <p className="festival-letter">{invitation.letter_content || teacher?.personalized_message || `It is our great pleasure and highest honor to cordially invite you to celebrate the ${page.festival_title} at Hangzhou Dianzi University.`}</p>
-            {Number.isFinite(eventTimestamp) && <section className="festival-countdown" aria-label={page.countdown_label}>
-              <h3>⌛ {page.countdown_label}</h3>
-              <div className="countdown-grid">
+          </section>
+
+          <section className="qr-template-section qr-template-welcome" id="welcome" data-qr-reveal="">
+            <p className="qr-template-eyebrow">A note for you</p>
+            <h2>A warm welcome</h2>
+            <p>{event.description || page.tagline}</p>
+            {teacher?.personalized_message && teacher.personalized_message !== invitation.letter_content && (
+              <p className="qr-template-personal-note">{teacher.personalized_message}</p>
+            )}
+          </section>
+
+          <section className="qr-template-section qr-template-details" id="event-details" data-qr-reveal="">
+            <p className="qr-template-eyebrow">The gathering</p>
+            <h2>Event details</h2>
+            <p className="qr-template-section-intro">Everything you need to know about the celebration.</p>
+            <div className="qr-template-detail-grid">
+              <article data-qr-reveal=""><span>Event</span><strong>{event.title}</strong></article>
+              <article data-qr-reveal=""><span>Date</span><strong>{eventDateLabel || 'To be announced'}</strong></article>
+              <article data-qr-reveal=""><span>Time</span><strong>{eventTimeLabel || 'To be announced'}</strong>{eventTimeLabel && <small>{event.event_timezone}</small>}</article>
+              <article data-qr-reveal=""><span>Venue</span><strong>{page.venue_name || event.venue || 'To be announced'}</strong></article>
+              <article data-qr-reveal=""><span>Dress code</span><strong>{page.dress_code || 'As you feel comfortable'}</strong></article>
+              <article data-qr-reveal=""><span>Hosted by</span><strong>{page.organizer || event.organizer || page.university_heading}</strong></article>
+            </div>
+          </section>
+
+          {Number.isFinite(eventTimestamp) && (
+            <section className="qr-template-countdown" aria-label={page.countdown_label} data-qr-reveal="">
+              <p className="qr-template-eyebrow">Until we celebrate</p>
+              <h2>{page.countdown_label}</h2>
+              <div className="qr-template-countdown-grid">
                 {([
                   ['days', countdown.days],
                   ['hours', countdown.hours],
-                  ['mins', countdown.minutes],
-                  ['secs', countdown.seconds],
+                  ['minutes', countdown.minutes],
+                  ['seconds', countdown.seconds],
                 ] as const).map(([label, value]) => (
-                  <div className="countdown-unit" key={label}><strong>{String(value).padStart(2, '0')}</strong><span>{label}</span></div>
+                  <div key={label}><strong>{String(value).padStart(2, '0')}</strong><span>{label}</span></div>
                 ))}
               </div>
-            </section>}
-            <section className="festival-event-details">
-              <div className="festival-detail-row">
-                <span className="festival-detail-emoji">🗓️</span>
-                <div><h3>Date &amp; Time</h3><p>{eventDateLabel || 'Date to be announced'}</p>{eventTimeLabel && <strong>Starts at {eventTimeLabel}</strong>}</div>
-              </div>
-              <div className="festival-detail-row">
-                <span className="festival-detail-emoji">📍</span>
-                <div><h3>Venue &amp; Location</h3><p>{page.venue_name || event.venue}</p>{page.venue_detail && <p className="festival-detail-muted">{page.venue_detail}</p>}<p className="festival-detail-muted">{page.address || event.address}</p></div>
-              </div>
-              <div className="festival-detail-row">
-                <span className="festival-detail-emoji">👔</span>
-                <div><h3>Dress Code</h3><p className="festival-detail-muted">{page.dress_code}</p></div>
-              </div>
             </section>
+          )}
+
+          <section className="qr-template-section qr-template-location" data-qr-reveal="">
+            <p className="qr-template-eyebrow">Find your way</p>
+            <h2>The location</h2>
+            <div className={`qr-template-location-card${event.poster_url ? ' has-poster' : ''}`}>
+              <div>
+                <span className="qr-template-eyebrow">Where we’ll meet</span>
+                <h3>{page.venue_name || event.venue || 'Venue to be announced'}</h3>
+                {page.venue_detail && <p>{page.venue_detail}</p>}
+                {(page.address || event.address) && <p>{page.address || event.address}</p>}
+                {page.subway_guide && <p><strong>Getting there:</strong> {page.subway_guide}</p>}
+                {(page.campus_gate || page.campus_gate_chinese) && <p><strong>Campus gate:</strong> {[page.campus_gate, page.campus_gate_chinese].filter(Boolean).join(' · ')}</p>}
+                <div className="qr-template-map-links">
+                  {page.amap_url && <a href={page.amap_url} target="_blank" rel="noreferrer">Open in Amap</a>}
+                  {page.tencent_map_url && <a href={page.tencent_map_url} target="_blank" rel="noreferrer">Open in Tencent Maps</a>}
+                </div>
+              </div>
+              {event.poster_url && <img src={event.poster_url} alt={`${event.title} event poster`} />}
+            </div>
+          </section>
+
+          <section className="qr-template-section qr-template-rsvp" id="rsvp" ref={rsvpRef} data-qr-reveal="">
+            <p className="qr-template-eyebrow">We hope you can join us</p>
             {submitted ? (
-              <div className="submitted-state"><span className="success-check"><Check size={21} /></span><h2>Thank you for responding</h2><p>Your RSVP has been recorded. We look forward to seeing you.</p></div>
+              <div className="qr-template-thanks">
+                <span className="success-check"><Check size={21} /></span>
+                <h2>Thank you, {guestName}</h2>
+                <p>Your RSVP has been recorded. We look forward to celebrating with you.</p>
+              </div>
             ) : (
               <>
-                <button className="festival-rsvp-cta" type="button" onClick={showRSVPForm}>🌸 Click Here to Confirm RSVP</button>
-                {rsvpOpen && <div className="festival-rsvp-panel" ref={rsvpRef}>
-                  <form className="form-stack rsvp-form" onSubmit={sendRSVP}>
-                    <h2>Will you join us?</h2>
+                <h2>Kindly RSVP</h2>
+                <p>Please let us know if you can join us.</p>
+                {!rsvpOpen ? (
+                  <button className="qr-template-rsvp-button" type="button" onClick={showRSVPForm}>Confirm your attendance</button>
+                ) : (
+                  <form className="qr-template-rsvp-form" onSubmit={sendRSVP}>
                     <label>Your name<input required value={guestName} onChange={(e) => setGuestName(e.target.value)} /></label>
                     <label>Response<select value={response} onChange={(e) => setResponse(e.target.value as typeof response)}><option value="accepted">Accept with pleasure</option><option value="maybe">Maybe</option><option value="declined">Unable to attend</option></select></label>
-                    {response !== 'declined' && <label>Number of guests<input type="number" min={1} max={20} step={1} required value={guestCount} onChange={(e) => setGuestCount(Math.max(1, Number(e.target.value)))} /></label>}
-                    <button className="button button-primary button-wide" disabled={busy}>{busy ? 'Sending response…' : 'Send RSVP'}<Send size={16} /></button>
+                    {error && <Notice tone="error">{error}</Notice>}
+                    <button className="qr-template-rsvp-button" type="submit" disabled={busy}>{busy ? 'Sending response…' : 'Send RSVP'}<Send size={15} /></button>
                   </form>
-                </div>}
+                )}
               </>
             )}
-            <section className="festival-transport">
-              <h3>🚇 Campus &amp; Transportation Guide (交通指南)</h3>
-              <p><strong>Subway:</strong> {page.subway_guide}</p>
-              <p><strong>Campus Gate:</strong> {page.campus_gate} {page.campus_gate_chinese && `(${page.campus_gate_chinese})`}</p>
-              <div className="festival-map-links">
-                {page.amap_url && <a href={page.amap_url} target="_blank" rel="noreferrer">📍 Open in AMAP (高德地图)</a>}
-                {page.tencent_map_url && <a href={page.tencent_map_url} target="_blank" rel="noreferrer">🧭 Open in Tencent Map (腾讯地图)</a>}
-              </div>
-            </section>
-            <footer className="festival-card-footer">
-              <p>Organized by {page.organizer}</p>
-              <p>Contact WeChat: <strong>{page.wechat}</strong> | Email: <a href={`mailto:${page.email}`}>{page.email}</a></p>
-            </footer>
-          </article>
-          <a className="festival-admin-link" href="/admin/login">🔒 Committee Admin Portal</a>
+          </section>
+
+          <footer className="qr-template-footer" data-qr-reveal="">
+            <p className="qr-template-eyebrow">With all our love</p>
+            <h2>Thank you</h2>
+            <p>We look forward to celebrating together.</p>
+            <p className="qr-template-footer-organizer">{page.organizer || event.organizer || page.university_heading}</p>
+            {(page.wechat || page.email) && <p className="qr-template-footer-contact">{[page.wechat && `WeChat: ${page.wechat}`, page.email && `Email: ${page.email}`].filter(Boolean).join(' · ')}</p>}
+            <a href="/admin/login">Committee admin portal</a>
+          </footer>
         </>
       ) : null}
     </main>

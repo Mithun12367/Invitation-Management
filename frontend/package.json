@@ -35,7 +35,7 @@
     "vite": "^6.0.0"
   },
   "allowBuilds": {
-  "core-js": true,
-  "esbuild": true
-}
+    "core-js": true,
+    "esbuild": true
+  }
 }

@@ -29,7 +29,7 @@ function throwIfError(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
 }
 
-async function adminFunctionError(error: Error): Promise<Error> {
+async function edgeFunctionError(error: Error): Promise<Error> {
   if ('context' in error && error.context instanceof Response) {
     try {
       const body: unknown = await error.context.clone().json();
@@ -131,6 +131,33 @@ export async function recordScan(
   return data as { success: boolean };
 }
 
+export async function getWeChatAuthorizationUrl(
+  redirectUri: string,
+  state: string
+): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('wechat-oauth', {
+    body: { action: 'authorize', redirect_uri: redirectUri, state },
+  });
+
+  if (error) throw await edgeFunctionError(error);
+  if (typeof data?.authorizationUrl !== 'string') {
+    throw new Error('WeChat sign-in is not configured.');
+  }
+  return data.authorizationUrl;
+}
+
+export async function fetchWeChatNickname(code: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('wechat-oauth', {
+    body: { action: 'profile', code },
+  });
+
+  if (error) throw await edgeFunctionError(error);
+  if (typeof data?.nickname !== 'string' || !data.nickname.trim()) {
+    throw new Error('WeChat did not provide a display name.');
+  }
+  return data.nickname.trim();
+}
+
 export async function adminOps<T = unknown>(
   action: string,
   opData?: Record<string, unknown>
@@ -142,7 +169,7 @@ export async function adminOps<T = unknown>(
     { body: payload }
   );
 
-  if (error) throw await adminFunctionError(error);
+  if (error) throw await edgeFunctionError(error);
   return data as T;
 }
 

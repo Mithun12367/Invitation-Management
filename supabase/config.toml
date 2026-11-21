@@ -38,3 +38,6 @@ file_size_limit = "50MiB"
 # admin-ops validates the bearer token and admin role itself, so preflight must reach its CORS handler.
 [functions.admin-ops]
 verify_jwt = false
+
+[functions.wechat-oauth]
+verify_jwt = false

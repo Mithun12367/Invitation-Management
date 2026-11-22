@@ -58,7 +58,9 @@ import {
   fetchPublicInvitation,
   fetchWeChatNickname,
   fetchPublicSettings,
+  fetchQrLandingPageTheme,
   saveInvitationLetterDesign,
+  saveQrLandingPageTheme,
   saveAppLogo,
   submitRSVP,
   createPublicSettings,
@@ -70,7 +72,7 @@ import {
   updatePublicSettings,
   getWeChatAuthorizationUrl,
 } from './services/api';
-import type { DashboardStats, Event, EventFormData, Invitation, InvitationLandingPageConfig, PublicSettings, RSVP, Teacher, TeacherFormData, ValidateInvitationResponse } from './types';
+import type { DashboardStats, Event, EventFormData, Invitation, InvitationLandingPageConfig, InvitationLandingPageFontKey, PublicSettings, QrLandingPageTheme, RSVP, Teacher, TeacherFormData, ValidateInvitationResponse } from './types';
 
 const navigation = [
   { label: 'Dashboard', to: '/admin', icon: LayoutDashboard },
@@ -137,6 +139,9 @@ function isWeChatBrowser(): boolean {
 }
 
 const defaultLandingPageConfig: InvitationLandingPageConfig = {
+  font_family: '',
+  font_families: {},
+  font_colors: {},
   university_heading: 'HANGZHOU DIANZI UNIVERSITY • 杭州电子科技大学',
   festival_title: 'HDU Bangladeshi Cultural Festival 2026',
   tagline: 'Celebrating Heritage, Friendship & Academic Harmony at Hangzhou Dianzi University',
@@ -160,6 +165,203 @@ const defaultLandingPageConfig: InvitationLandingPageConfig = {
   page_background_overlay: 48,
   confetti_enabled: true,
 };
+
+const defaultQrLandingPageTheme: QrLandingPageTheme = {
+  font_family: '',
+  font_families: {},
+  font_colors: {},
+};
+
+const wordFontFamilySuggestions = [
+  'Aptos',
+  'Aptos Display',
+  'Arial',
+  'Arial Black',
+  'Arial Narrow',
+  'Bahnschrift',
+  'Baskerville Old Face',
+  'Bell MT',
+  'Book Antiqua',
+  'Bookman Old Style',
+  'Calibri',
+  'Calibri Light',
+  'Cambria',
+  'Cambria Math',
+  'Candara',
+  'Century Gothic',
+  'Comic Sans MS',
+  'Consolas',
+  'Constantia',
+  'Corbel',
+  'Courier New',
+  'Franklin Gothic',
+  'Garamond',
+  'Georgia',
+  'Gill Sans MT',
+  'Edwardian Script ITC',
+  'Impact',
+  'Lucida Console',
+  'Lucida Sans Unicode',
+  'Microsoft Sans Serif',
+  'Montserrat',
+  'Palatino Linotype',
+  'Segoe Print',
+  'Segoe Script',
+  'Segoe UI',
+  'Tahoma',
+  'Times New Roman',
+  'Trebuchet MS',
+  'Verdana',
+];
+
+const landingPageFontKeys: InvitationLandingPageFontKey[] = [
+  'university_heading',
+  'festival_title',
+  'tagline',
+  'invitation_badge',
+  'countdown_label',
+  'venue_name',
+  'venue_detail',
+  'address',
+  'dress_code',
+  'subway_guide',
+  'campus_gate',
+  'campus_gate_chinese',
+  'amap_url',
+  'tencent_map_url',
+  'organizer',
+  'wechat',
+  'email',
+  'letter_message',
+  'navigation',
+  'cover_invitation',
+  'cover_navigation',
+  'teacher_name',
+  'teacher_department',
+  'event_title',
+  'event_date',
+  'event_time',
+  'event_meta',
+  'welcome_eyebrow',
+  'welcome_heading',
+  'welcome_body',
+  'personal_note',
+  'section_eyebrow',
+  'details_heading',
+  'details_intro',
+  'detail_label',
+  'detail_value',
+  'countdown_eyebrow',
+  'countdown_value',
+  'countdown_unit',
+  'location_eyebrow',
+  'location_heading',
+  'location_label',
+  'rsvp_eyebrow',
+  'rsvp_heading',
+  'rsvp_body',
+  'rsvp_button',
+  'rsvp_form',
+  'footer_eyebrow',
+  'footer_heading',
+  'footer_body',
+  'footer_link',
+];
+
+const landingPageExtraFontFields: Array<{ key: InvitationLandingPageFontKey; label: string }> = [
+  { key: 'navigation', label: 'Navigation links' },
+  { key: 'cover_invitation', label: 'Cover invitation line' },
+  { key: 'cover_navigation', label: 'Cover scroll link' },
+  { key: 'teacher_name', label: 'Teacher name' },
+  { key: 'teacher_department', label: 'Teacher department' },
+  { key: 'event_title', label: 'Event title' },
+  { key: 'event_date', label: 'Event date' },
+  { key: 'event_time', label: 'Event time' },
+  { key: 'event_meta', label: 'Event timezone and metadata' },
+  { key: 'welcome_eyebrow', label: 'Welcome section eyebrow' },
+  { key: 'welcome_heading', label: 'Welcome heading' },
+  { key: 'welcome_body', label: 'Welcome text' },
+  { key: 'personal_note', label: 'Personalized teacher note' },
+  { key: 'section_eyebrow', label: 'Section eyebrows' },
+  { key: 'details_heading', label: 'Event details heading' },
+  { key: 'details_intro', label: 'Event details introduction' },
+  { key: 'detail_label', label: 'Event detail labels' },
+  { key: 'detail_value', label: 'Event detail values' },
+  { key: 'countdown_eyebrow', label: 'Countdown eyebrow' },
+  { key: 'countdown_value', label: 'Countdown numbers' },
+  { key: 'countdown_unit', label: 'Countdown units' },
+  { key: 'location_eyebrow', label: 'Location eyebrow' },
+  { key: 'location_heading', label: 'Location heading' },
+  { key: 'location_label', label: 'Location labels' },
+  { key: 'rsvp_eyebrow', label: 'RSVP eyebrow' },
+  { key: 'rsvp_heading', label: 'RSVP headings' },
+  { key: 'rsvp_body', label: 'RSVP text' },
+  { key: 'rsvp_button', label: 'RSVP buttons' },
+  { key: 'rsvp_form', label: 'RSVP form labels and fields' },
+  { key: 'footer_eyebrow', label: 'Footer eyebrow' },
+  { key: 'footer_heading', label: 'Footer heading' },
+  { key: 'footer_body', label: 'Footer text' },
+  { key: 'footer_link', label: 'Footer link' },
+];
+
+function fontFamilyValue(fontFamily: string): string {
+  return fontFamily.trim().toLowerCase() === 'edwardian script itc'
+    ? '"Edwardian Script ITC", cursive'
+    : fontFamily.trim();
+}
+
+function FontFamilyPicker({
+  label,
+  value,
+  onChange,
+  color,
+  onColorChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  color?: string;
+  onColorChange?: (value: string) => void;
+}) {
+  const fontPicker = (
+    <label className="font-family-picker">
+      {label}
+      <input
+        type="text"
+        list="word-font-family-suggestions"
+        value={value}
+        placeholder="Use default font"
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
+  );
+
+  if (!onColorChange) return fontPicker;
+
+  return (
+    <div className="font-style-picker">
+      {fontPicker}
+      <div className="font-color-picker">
+        <span>{label.replace(/ font$/i, '')} color</span>
+        <div>
+          <input
+            type="checkbox"
+            checked={Boolean(color)}
+            aria-label={`Set ${label.replace(/ font$/i, '')} color`}
+            onChange={(event) => onColorChange(event.target.checked ? '#17352e' : '')}
+          />
+          <input
+            type="color"
+            value={color || '#17352e'}
+            disabled={!color}
+            aria-label={`${label.replace(/ font$/i, '')} color value`}
+            onChange={(event) => onColorChange(event.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 async function parseTeacherWorkbook(file: File): Promise<{ teachers: TeacherFormData[]; skippedRows: number[] }> {
   const XLSX = await import('xlsx');
@@ -556,10 +758,13 @@ function InvitationsPage() {
   const [error, setError] = useState('');
   const [createdLink, setCreatedLink] = useState('');
   const [copied, setCopied] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState('');
   const [actionBusyId, setActionBusyId] = useState('');
   const [editingInvite, setEditingInvite] = useState<Invitation | null>(null);
   const [letterDraft, setLetterDraft] = useState('');
   const [landingDraft, setLandingDraft] = useState<InvitationLandingPageConfig>(defaultLandingPageConfig);
+  const [qrTheme, setQrTheme] = useState<QrLandingPageTheme>(defaultQrLandingPageTheme);
   const [musicFile, setMusicFile] = useState<File | null>(null);
   const [backgroundFile, setBackgroundFile] = useState<File | null>(null);
   const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState('');
@@ -581,11 +786,17 @@ function InvitationsPage() {
     setLoading(true);
     setError('');
     try {
-      const [nextEvents, nextTeachers, nextInvitations] = await Promise.all([fetchEvents(), fetchTeachers(), fetchInvitations()]);
+      const [nextEvents, nextTeachers, nextInvitations, nextQrTheme] = await Promise.all([
+        fetchEvents(),
+        fetchTeachers(),
+        fetchInvitations(),
+        fetchQrLandingPageTheme(),
+      ]);
       setEvents(nextEvents);
       setEventId((current) => current || nextEvents[0]?.id || '');
       setTeachers(nextTeachers);
       setInvitations(nextInvitations);
+      setQrTheme(nextQrTheme);
     } catch (cause) {
       setError(messageFrom(cause));
     } finally {
@@ -609,6 +820,7 @@ function InvitationsPage() {
 
     setBusy(true);
     setError('');
+    setBulkMessage('');
     setCreatedLink('');
     try {
       const result = await adminOps<{ success: boolean; shareable_token?: string }>('generate-token', { event_id: eventId, guest_id: teacherId });
@@ -630,6 +842,36 @@ function InvitationsPage() {
     await navigator.clipboard.writeText(createdLink);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
+  }
+
+  async function createBulkInvites() {
+    if (!eventId || !eligibleTeachers.length) return;
+
+    setBulkBusy(true);
+    setError('');
+    setBulkMessage('');
+    setCreatedLink('');
+    try {
+      const result = await adminOps<{
+        generated: number;
+        failed: number;
+        failures: Array<{ teacher_id: string; error: string }>;
+      }>('bulk-generate', {
+        event_id: eventId,
+        teacher_ids: eligibleTeachers.map((teacher) => teacher.id),
+      });
+
+      await reload();
+      if (result.failed) {
+        setError(`${result.generated} invitations created successfully; ${result.failed} failed. ${result.failures.map((failure) => failure.error).join(' ')}`);
+      } else {
+        setBulkMessage(`${result.generated} invitations created successfully.`);
+      }
+    } catch (cause) {
+      setError(messageFrom(cause));
+    } finally {
+      setBulkBusy(false);
+    }
   }
 
   function inviteLink(invite: Invitation): string {
@@ -679,7 +921,7 @@ function InvitationsPage() {
   }
 
   async function deleteInvite(invite: Invitation) {
-    if (!window.confirm(`Delete the invitation for ${invite.teacher?.full_name ?? 'this guest'}?`)) return;
+    if (!window.confirm(`Delete the invitation for ${invite.teacher?.full_name ?? 'this guest'}? Its RSVP will also be deleted.`)) return;
     setActionBusyId(invite.id);
     setError('');
     try {
@@ -693,11 +935,25 @@ function InvitationsPage() {
   }
 
   function editInviteLetter(invite: Invitation) {
+    const invitationConfig = {
+      ...defaultLandingPageConfig,
+      ...(invite.landing_page_config ?? {}),
+    };
+    const sharedThemeConfigured = landingPageFontKeys.some((key) =>
+      Object.prototype.hasOwnProperty.call(qrTheme.font_families, key) ||
+      Object.prototype.hasOwnProperty.call(qrTheme.font_colors, key)
+    );
     setEditingInvite(invite);
     setLetterDraft(invite.letter_content ?? '');
     setLandingDraft({
-      ...defaultLandingPageConfig,
-      ...(invite.landing_page_config ?? {}),
+      ...invitationConfig,
+      font_family: sharedThemeConfigured ? qrTheme.font_family : invitationConfig.font_family,
+      font_families: sharedThemeConfigured
+        ? { ...qrTheme.font_families }
+        : { ...invitationConfig.font_families },
+      font_colors: sharedThemeConfigured
+        ? { ...qrTheme.font_colors }
+        : { ...invitationConfig.font_colors },
     });
     setMusicFile(null);
     setBackgroundFile(null);
@@ -709,6 +965,16 @@ function InvitationsPage() {
     setActionBusyId(editingInvite.id);
     setError('');
     try {
+      const nextQrTheme: QrLandingPageTheme = {
+        font_family: landingDraft.font_family,
+        font_families: { ...landingDraft.font_families },
+        font_colors: { ...landingDraft.font_colors },
+      };
+      landingPageFontKeys.forEach((key) => {
+        nextQrTheme.font_families[key] ??= '';
+        nextQrTheme.font_colors[key] ??= '';
+      });
+
       const musicUrl = musicFile
         ? await uploadInvitationPageAsset(editingInvite.id, musicFile, 'music')
         : landingDraft.music_url;
@@ -723,6 +989,8 @@ function InvitationsPage() {
           page_background_url: pageBackgroundUrl,
         },
       });
+      await saveQrLandingPageTheme(nextQrTheme);
+      setQrTheme(nextQrTheme);
       setInvitations((current) => current.map((invite) =>
         invite.id === editingInvite.id ? { ...invite, ...design } : invite
       ));
@@ -736,8 +1004,13 @@ function InvitationsPage() {
     }
   }
 
+  type LandingPageConfigTextKey = Exclude<
+    keyof InvitationLandingPageConfig,
+    'font_family' | 'font_families' | 'font_colors' | 'confetti_enabled' |
+    'music_url' | 'page_background_url' | 'page_background_position' | 'page_background_overlay'
+  >;
   const landingPageFields: Array<{
-    key: Exclude<keyof InvitationLandingPageConfig, 'confetti_enabled'>;
+    key: LandingPageConfigTextKey;
     label: string;
     multiline?: boolean;
   }> = [
@@ -750,15 +1023,31 @@ function InvitationsPage() {
     { key: 'venue_detail', label: 'Venue hall / floor' },
     { key: 'address', label: 'Event address', multiline: true },
     { key: 'dress_code', label: 'Dress code', multiline: true },
+    { key: 'organizer', label: 'Organizer / footer', multiline: true },
+  ];
+  const landingPageAdditionalFields: Array<{
+    key: LandingPageConfigTextKey;
+    label: string;
+    multiline?: boolean;
+  }> = [
     { key: 'subway_guide', label: 'Subway directions', multiline: true },
     { key: 'campus_gate', label: 'Campus gate address', multiline: true },
     { key: 'campus_gate_chinese', label: 'Campus gate address (Chinese)' },
     { key: 'amap_url', label: 'Amap map link' },
     { key: 'tencent_map_url', label: 'Tencent map link' },
-    { key: 'organizer', label: 'Organizer / footer' , multiline: true },
     { key: 'wechat', label: 'WeChat contact' },
     { key: 'email', label: 'Contact email' },
   ];
+  const landingPageStyleFields: Array<{ key: InvitationLandingPageFontKey; label: string }> = [
+    ...landingPageFields.map(({ key, label }) => ({ key, label })),
+    ...landingPageAdditionalFields.map(({ key, label }) => ({ key, label })),
+    { key: 'letter_message', label: 'Letter message' },
+    ...landingPageExtraFontFields,
+  ];
+  const invitedTeacherIds = new Set(invitations
+    .filter((invite) => invite.event_id === eventId && invite.invitation_status !== 'revoked')
+    .map((invite) => invite.guest_id));
+  const eligibleTeachers = teachers.filter((teacher) => teacher.is_active && !invitedTeacherIds.has(teacher.id));
 
   return (
     <>
@@ -767,11 +1056,25 @@ function InvitationsPage() {
       <section className="panel create-form-panel">
         <div className="panel-heading"><div><h2>Create an invitation</h2><p>Choose an event and teacher to generate a unique, shareable invite link.</p></div></div>
         <form className="inline-form" onSubmit={createInvite}>
-          <label>Event<select required value={eventId} onChange={(e) => setEventId(e.target.value)}><option value="">Select an event</option>{events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}</select></label>
+          <label>Event<select required value={eventId} onChange={(e) => {
+            setEventId(e.target.value);
+            setBulkMessage('');
+            setCreatedLink('');
+          }}><option value="">Select an event</option>{events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}</select></label>
           <label>Teacher<select required value={teacherId} onChange={(e) => setTeacherId(e.target.value)}><option value="">Select a teacher</option>{teachers.filter((teacher) => teacher.is_active).map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.full_name}</option>)}</select></label>
           <button className="button button-primary" disabled={busy || loading || !events.length || !teachers.length}><Plus size={16} />{busy ? 'Creating…' : 'Create invite'}</button>
         </form>
         {createdLink && <div className="success-link"><Check size={17} /><span><strong>Invitation created</strong><small>{createdLink}</small></span><button className="button button-quiet" onClick={copyLink}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? 'Copied' : 'Copy link'}</button></div>}
+        <div className="bulk-invitation-action">
+          <div>
+            <strong>Create invitations for all eligible teachers</strong>
+            <small>{eventId ? `${eligibleTeachers.length} active teacher${eligibleTeachers.length === 1 ? '' : 's'} without an invitation for this event.` : 'Select an event first.'}</small>
+          </div>
+          <button className="button" type="button" disabled={bulkBusy || loading || !eventId || !eligibleTeachers.length} onClick={() => void createBulkInvites()}>
+            <Users size={15} />{bulkBusy ? 'Creating…' : `Create ${eligibleTeachers.length} invitations`}
+          </button>
+        </div>
+        {bulkMessage && <div className="success-link bulk-success-message"><Check size={17} /><span><strong>{bulkMessage}</strong></span></div>}
       </section>
       {editingInvite && (
         <section className="panel invitation-editor-panel">
@@ -797,23 +1100,72 @@ function InvitationsPage() {
             <section className="landing-editor-section">
               <div>
                 <h3>QR landing page details</h3>
-                <p>These details are shown on the page guests see after scanning this invitation.</p>
+                <p>Edit the invitation wording here. Detailed font and color options are available below.</p>
               </div>
               <div className="landing-editor-grid">
+                <FontFamilyPicker
+                  label="Default font family (all text)"
+                  value={landingDraft.font_family}
+                  onChange={(font_family) => setLandingDraft((current) => ({ ...current, font_family }))}
+                />
                 {landingPageFields.map(({ key, label, multiline }) => (
-                  <label className={multiline ? 'landing-editor-wide' : ''} key={key}>
-                    {label}
-                    {multiline
-                      ? <textarea rows={2} value={landingDraft[key]} onChange={(event) => setLandingDraft((current) => ({ ...current, [key]: event.target.value }))} />
-                      : <input type={key.endsWith('_url') ? 'url' : 'text'} value={landingDraft[key]} onChange={(event) => setLandingDraft((current) => ({ ...current, [key]: event.target.value }))} />}
-                  </label>
+                  <div className={`landing-editor-field${multiline ? ' landing-editor-wide' : ''}`} key={key}>
+                    <label>
+                      {label}
+                      {multiline
+                        ? <textarea rows={2} value={landingDraft[key]} onChange={(event) => setLandingDraft((current) => ({ ...current, [key]: event.target.value }))} />
+                        : <input type={key.endsWith('_url') ? 'url' : 'text'} value={landingDraft[key]} onChange={(event) => setLandingDraft((current) => ({ ...current, [key]: event.target.value }))} />}
+                    </label>
+                  </div>
                 ))}
               </div>
-              <label className="confetti-setting">
-                <input type="checkbox" checked={landingDraft.confetti_enabled} onChange={(event) => setLandingDraft((current) => ({ ...current, confetti_enabled: event.target.checked }))} />
-                Show animated festival confetti
-              </label>
-              <div className="page-background-editor">
+              <details className="landing-editor-details">
+                <summary>Additional directions and contact information</summary>
+                <div className="landing-editor-grid">
+                  {landingPageAdditionalFields.map(({ key, label, multiline }) => (
+                    <div className={`landing-editor-field${multiline ? ' landing-editor-wide' : ''}`} key={key}>
+                      <label>
+                        {label}
+                        {multiline
+                          ? <textarea rows={2} value={landingDraft[key]} onChange={(event) => setLandingDraft((current) => ({ ...current, [key]: event.target.value }))} />
+                          : <input type={key.endsWith('_url') ? 'url' : 'text'} value={landingDraft[key]} onChange={(event) => setLandingDraft((current) => ({ ...current, [key]: event.target.value }))} />}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </details>
+              <details className="landing-editor-details">
+                <summary>Fonts and colors for the QR page</summary>
+                <p>Styles sync by text role across all QR invitations; wording stays individual. Fonts must be installed on the viewing device.</p>
+                <datalist id="word-font-family-suggestions">
+                  {wordFontFamilySuggestions.map((fontFamily) => <option key={fontFamily} value={fontFamily} />)}
+                </datalist>
+                <div className="landing-editor-grid">
+                  {landingPageStyleFields.map(({ key, label }) => (
+                    <FontFamilyPicker
+                      key={key}
+                      label={`${label} font`}
+                      value={landingDraft.font_families[key] ?? ''}
+                      color={landingDraft.font_colors[key] ?? ''}
+                      onChange={(fontFamily) => setLandingDraft((current) => ({
+                        ...current,
+                        font_families: { ...current.font_families, [key]: fontFamily },
+                      }))}
+                      onColorChange={(color) => setLandingDraft((current) => ({
+                        ...current,
+                        font_colors: { ...current.font_colors, [key]: color },
+                      }))}
+                    />
+                  ))}
+                </div>
+              </details>
+              <details className="landing-editor-details">
+                <summary>Background, animation, and music</summary>
+                <label className="confetti-setting">
+                  <input type="checkbox" checked={landingDraft.confetti_enabled} onChange={(event) => setLandingDraft((current) => ({ ...current, confetti_enabled: event.target.checked }))} />
+                  Show animated festival confetti
+                </label>
+                <div className="page-background-editor">
                 <div>
                   <span className="field-label">Invitation background or animation</span>
                   <p>Upload an image or export an animated Canva design as GIF, MP4, or WebM. Canva project files cannot be uploaded directly. The animation plays behind the QR invitation.</p>
@@ -891,18 +1243,19 @@ function InvitationsPage() {
                     </button>
                   </div>
                 )}
-              </div>
-              <div className="landing-asset-grid">
-                <div className="form-stack">
-                  <span className="field-label">Background music</span>
-                  <input ref={musicInputRef} className="visually-hidden" type="file" accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/webm" onChange={(event) => setMusicFile(event.target.files?.[0] ?? null)} />
-                  <span className="upload-field">
-                    <button className="button" type="button" onClick={() => musicInputRef.current?.click()}><Upload size={15} />Upload music</button>
-                    <small>{musicFile?.name ?? (landingDraft.music_url ? 'Current music is saved' : 'MP3, WAV, OGG, or WebM · 20 MB max')}</small>
-                  </span>
-                  {landingDraft.music_url && <button className="button button-quiet button-danger asset-remove" type="button" onClick={() => { setLandingDraft((current) => ({ ...current, music_url: '' })); setMusicFile(null); }}>Remove music</button>}
                 </div>
-              </div>
+                <div className="landing-asset-grid">
+                  <div className="form-stack">
+                    <span className="field-label">Background music</span>
+                    <input ref={musicInputRef} className="visually-hidden" type="file" accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/webm" onChange={(event) => setMusicFile(event.target.files?.[0] ?? null)} />
+                    <span className="upload-field">
+                      <button className="button" type="button" onClick={() => musicInputRef.current?.click()}><Upload size={15} />Upload music</button>
+                      <small>{musicFile?.name ?? (landingDraft.music_url ? 'Current music is saved' : 'MP3, WAV, OGG, or WebM · 20 MB max')}</small>
+                    </span>
+                    {landingDraft.music_url && <button className="button button-quiet button-danger asset-remove" type="button" onClick={() => { setLandingDraft((current) => ({ ...current, music_url: '' })); setMusicFile(null); }}>Remove music</button>}
+                  </div>
+                </div>
+              </details>
             </section>
           </div>
           <div className="event-form-actions">
@@ -1163,6 +1516,9 @@ function PublicInvitationSettingsPage() {
 
 interface PrintableInvitationDesign {
   brandText: string;
+  brandColor: string;
+  fontFamily: string;
+  fontFamilies: Partial<Record<PrintableInvitationFontKey, string>>;
   showLogo: boolean;
   heading: string;
   message: string;
@@ -1175,6 +1531,31 @@ interface PrintableInvitationDesign {
   backgroundPosition: 'center' | 'top' | 'bottom' | 'left' | 'right';
   backgroundOverlay: number;
 }
+
+type PrintableInvitationFontKey =
+  | 'brandText'
+  | 'heading'
+  | 'eventTitle'
+  | 'recipient'
+  | 'message'
+  | 'personalMessage'
+  | 'date'
+  | 'venue'
+  | 'closing'
+  | 'footer';
+
+const printableInvitationFontFields: Array<{ key: PrintableInvitationFontKey; label: string }> = [
+  { key: 'brandText', label: 'Brand text' },
+  { key: 'heading', label: 'Invitation heading' },
+  { key: 'eventTitle', label: 'Event title' },
+  { key: 'recipient', label: 'Guest name' },
+  { key: 'message', label: 'Invitation message' },
+  { key: 'personalMessage', label: 'Personal message' },
+  { key: 'date', label: 'Date' },
+  { key: 'venue', label: 'Venue' },
+  { key: 'closing', label: 'Closing message' },
+  { key: 'footer', label: 'Footer' },
+];
 
 const printableAccentColors = [
   { name: 'Festival rose', value: '#cb5464' },
@@ -1196,6 +1577,9 @@ const printableAccentColors = [
 const printDesignStorageKey = 'hdu-print-invitation-design-v1';
 const defaultPrintableInvitationDesign: PrintableInvitationDesign = {
   brandText: 'HDU CULTURAL FESTIVAL',
+  brandColor: '#92877d',
+  fontFamily: '',
+  fontFamilies: {},
   showLogo: true,
   heading: 'You Are Invited',
   message: 'We are delighted to invite you to join us for this special celebration. Your presence would make this event even more memorable. Please scan the QR code to view your invitation and RSVP.',
@@ -1288,6 +1672,13 @@ function InvitationPrintSettingsEditor({
     setDesign((current) => ({ ...current, [field]: value }));
   }
 
+  function updatePrintFont(field: PrintableInvitationFontKey, value: string) {
+    setDesign((current) => ({
+      ...current,
+      fontFamilies: { ...current.fontFamilies, [field]: value },
+    }));
+  }
+
   function uploadBackground(file: File | undefined) {
     if (!file) return;
     setError('');
@@ -1315,12 +1706,16 @@ function InvitationPrintSettingsEditor({
   function renderInvitation(invite: Invitation) {
     const teacherName = invite.teacher?.full_name ?? invite.guest?.full_name ?? 'Festival guest';
     const personalMessage = invite.letter_content || invite.teacher?.personalized_message;
+    const printFontStyle = (key: PrintableInvitationFontKey) => ({
+      fontFamily: fontFamilyValue(design.fontFamilies[key] || design.fontFamily) || undefined,
+    });
 
     return (
       <article
-        className="print-invitation-card"
+        className={`print-invitation-card${design.fontFamily.trim() ? ' print-custom-font' : ''}`}
         key={invite.id}
         style={{
+          fontFamily: fontFamilyValue(design.fontFamily) || undefined,
           alignItems: design.verticalAlignment === 'top' ? 'flex-start' : design.verticalAlignment === 'bottom' ? 'flex-end' : 'center',
           borderColor: design.accentColor,
           backgroundImage: design.backgroundImage
@@ -1337,17 +1732,17 @@ function InvitationPrintSettingsEditor({
             {design.showLogo && (logoUrl
               ? <img className="print-invitation-logo" src={logoUrl} alt="HDU Festival logo" />
               : <span className="print-invitation-logo-placeholder">HDU</span>)}
-            <span className="eyebrow">{design.brandText}</span>
+            <span className="eyebrow" style={{ ...printFontStyle('brandText'), color: design.brandColor }}>{design.brandText}</span>
           </div>
-          <h2 style={{ color: design.accentColor }}>{design.heading}</h2>
-          <h3>{invite.event?.title ?? 'Festival invitation'}</h3>
-          <p className="print-invitation-name">Dear {teacherName},</p>
-          <p>{design.message}</p>
-          {personalMessage && <p>{personalMessage}</p>}
-          {invite.event?.event_date && <p><strong>Date:</strong> {new Date(invite.event.event_date).toLocaleString()}</p>}
-          {invite.event?.venue && <p><strong>Venue:</strong> {invite.event.venue}</p>}
-          <p>{design.closing}</p>
-          <small>{design.footer}</small>
+          <h2 style={{ ...printFontStyle('heading'), color: design.accentColor }}>{design.heading}</h2>
+          <h3 style={printFontStyle('eventTitle')}>{invite.event?.title ?? 'Festival invitation'}</h3>
+          <p className="print-invitation-name" style={printFontStyle('recipient')}>Dear {teacherName},</p>
+          <p style={printFontStyle('message')}>{design.message}</p>
+          {personalMessage && <p style={printFontStyle('personalMessage')}>{personalMessage}</p>}
+          {invite.event?.event_date && <p style={printFontStyle('date')}><strong>Date:</strong> {new Date(invite.event.event_date).toLocaleString()}</p>}
+          {invite.event?.venue && <p style={printFontStyle('venue')}><strong>Venue:</strong> {invite.event.venue}</p>}
+          <p style={printFontStyle('closing')}>{design.closing}</p>
+          <small style={printFontStyle('footer')}>{design.footer}</small>
         </div>
         {qrImages[invite.id]
           ? <img className="print-invitation-qr" src={qrImages[invite.id]} alt={`Unique invitation QR code for ${teacherName}`} />
@@ -1369,7 +1764,13 @@ function InvitationPrintSettingsEditor({
                 <span className="count-badge">{activeInvitations.length}</span>
               </div>
               <div className="print-design-fields">
-                <label>Festival name or brand text<input value={design.brandText} maxLength={100} onChange={(event) => updateDesign('brandText', event.target.value)} /></label>
+                <div className="print-design-field">
+                  <label>Festival name or brand text<input value={design.brandText} maxLength={100} onChange={(event) => updateDesign('brandText', event.target.value)} /></label>
+                  <label className="print-brand-color">
+                    Brand text color
+                    <input type="color" value={design.brandColor} onChange={(event) => updateDesign('brandColor', event.target.value)} />
+                  </label>
+                </div>
                 <label className="print-logo-toggle">
                   <input type="checkbox" checked={design.showLogo} onChange={(event) => updateDesign('showLogo', event.target.checked)} />
                   <span>Show logo</span>
@@ -1378,80 +1779,104 @@ function InvitationPrintSettingsEditor({
                 <label>Invitation message<textarea rows={5} maxLength={2000} value={design.message} onChange={(event) => updateDesign('message', event.target.value)} /></label>
                 <label>Closing message<input value={design.closing} maxLength={300} onChange={(event) => updateDesign('closing', event.target.value)} /></label>
                 <label>Footer<input value={design.footer} maxLength={200} onChange={(event) => updateDesign('footer', event.target.value)} /></label>
-                <div className="print-color-field">
-                  <span>Accent color</span>
-                  <button
-                    className="print-color-trigger"
-                    type="button"
-                    aria-label="Open accent color palette"
-                    aria-expanded={accentPaletteOpen}
-                    aria-controls="print-accent-color-palette"
-                    onClick={() => setAccentPaletteOpen((open) => !open)}
-                  >
-                    <span style={{ backgroundColor: design.accentColor }} />
-                    <Pencil size={14} />
-                  </button>
-                  {accentPaletteOpen && (
-                    <div className="print-color-palette" id="print-accent-color-palette" role="group" aria-label="Choose an accent color">
-                      <div className="print-color-swatches">
-                        {printableAccentColors.map((color) => (
-                          <button
-                            key={color.value}
-                            className="print-color-swatch"
-                            type="button"
-                            aria-label={color.name}
-                            aria-pressed={design.accentColor.toLowerCase() === color.value}
-                            title={color.name}
-                            style={{ backgroundColor: color.value }}
-                            onClick={() => {
-                              updateDesign('accentColor', color.value);
-                              setAccentPaletteOpen(false);
-                            }}
-                          />
-                        ))}
+                <details className="print-settings-group">
+                  <summary>Font families</summary>
+                  <FontFamilyPicker
+                    label="Default font family (all text)"
+                    value={design.fontFamily}
+                    onChange={(fontFamily) => updateDesign('fontFamily', fontFamily)}
+                  />
+                  <datalist id="word-font-family-suggestions">
+                    {wordFontFamilySuggestions.map((fontFamily) => <option key={fontFamily} value={fontFamily} />)}
+                  </datalist>
+                  <div className="print-font-grid">
+                    {printableInvitationFontFields.map(({ key, label }) => (
+                      <FontFamilyPicker
+                        key={key}
+                        label={`${label} font`}
+                        value={design.fontFamilies[key] ?? ''}
+                        onChange={(value) => updatePrintFont(key, value)}
+                      />
+                    ))}
+                  </div>
+                </details>
+                <details className="print-settings-group">
+                  <summary>Colors, layout, and background</summary>
+                  <div className="print-color-field">
+                    <span>Accent color</span>
+                    <button
+                      className="print-color-trigger"
+                      type="button"
+                      aria-label="Open accent color palette"
+                      aria-expanded={accentPaletteOpen}
+                      aria-controls="print-accent-color-palette"
+                      onClick={() => setAccentPaletteOpen((open) => !open)}
+                    >
+                      <span style={{ backgroundColor: design.accentColor }} />
+                      <Pencil size={14} />
+                    </button>
+                    {accentPaletteOpen && (
+                      <div className="print-color-palette" id="print-accent-color-palette" role="group" aria-label="Choose an accent color">
+                        <div className="print-color-swatches">
+                          {printableAccentColors.map((color) => (
+                            <button
+                              key={color.value}
+                              className="print-color-swatch"
+                              type="button"
+                              aria-label={color.name}
+                              aria-pressed={design.accentColor.toLowerCase() === color.value}
+                              title={color.name}
+                              style={{ backgroundColor: color.value }}
+                              onClick={() => {
+                                updateDesign('accentColor', color.value);
+                                setAccentPaletteOpen(false);
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <label className="print-custom-color">
+                          Custom color
+                          <input type="color" value={design.accentColor} onChange={(event) => updateDesign('accentColor', event.target.value)} />
+                        </label>
                       </div>
-                      <label className="print-custom-color">
-                        Custom color
-                        <input type="color" value={design.accentColor} onChange={(event) => updateDesign('accentColor', event.target.value)} />
-                      </label>
-                    </div>
-                  )}
-                </div>
-                <div className="print-layout-controls">
+                    )}
+                  </div>
+                  <div className="print-layout-controls">
+                    <label>
+                      Text alignment
+                      <select value={design.textAlignment} onChange={(event) => updateDesign('textAlignment', event.target.value as PrintableInvitationDesign['textAlignment'])}>
+                        <option value="left">Left</option>
+                        <option value="center">Center</option>
+                        <option value="right">Right</option>
+                      </select>
+                    </label>
+                    <label>
+                      Vertical position
+                      <select value={design.verticalAlignment} onChange={(event) => updateDesign('verticalAlignment', event.target.value as PrintableInvitationDesign['verticalAlignment'])}>
+                        <option value="top">Top</option>
+                        <option value="center">Center</option>
+                        <option value="bottom">Bottom</option>
+                      </select>
+                    </label>
+                    <label>
+                      Background crop
+                      <select value={design.backgroundPosition} onChange={(event) => updateDesign('backgroundPosition', event.target.value as PrintableInvitationDesign['backgroundPosition'])}>
+                        <option value="center">Center</option>
+                        <option value="top">Top</option>
+                        <option value="bottom">Bottom</option>
+                        <option value="left">Left</option>
+                        <option value="right">Right</option>
+                      </select>
+                    </label>
+                  </div>
                   <label>
-                    Text alignment
-                    <select value={design.textAlignment} onChange={(event) => updateDesign('textAlignment', event.target.value as PrintableInvitationDesign['textAlignment'])}>
-                      <option value="left">Left</option>
-                      <option value="center">Center</option>
-                      <option value="right">Right</option>
-                    </select>
+                    Background overlay <span className="range-value">{design.backgroundOverlay}%</span>
+                    <input type="range" min="0" max="85" step="5" value={design.backgroundOverlay} onChange={(event) => updateDesign('backgroundOverlay', Number(event.target.value))} />
+                    <small>Lower the overlay to show more of your uploaded design.</small>
                   </label>
-                  <label>
-                    Vertical position
-                    <select value={design.verticalAlignment} onChange={(event) => updateDesign('verticalAlignment', event.target.value as PrintableInvitationDesign['verticalAlignment'])}>
-                      <option value="top">Top</option>
-                      <option value="center">Center</option>
-                      <option value="bottom">Bottom</option>
-                    </select>
-                  </label>
-                  <label>
-                    Background crop
-                    <select value={design.backgroundPosition} onChange={(event) => updateDesign('backgroundPosition', event.target.value as PrintableInvitationDesign['backgroundPosition'])}>
-                      <option value="center">Center</option>
-                      <option value="top">Top</option>
-                      <option value="bottom">Bottom</option>
-                      <option value="left">Left</option>
-                      <option value="right">Right</option>
-                    </select>
-                  </label>
-                </div>
-                <label>
-                  Background overlay <span className="range-value">{design.backgroundOverlay}%</span>
-                  <input type="range" min="0" max="85" step="5" value={design.backgroundOverlay} onChange={(event) => updateDesign('backgroundOverlay', Number(event.target.value))} />
-                  <small>Lower the overlay to show more of your uploaded design.</small>
-                </label>
-                <label>Upload background design<input type="file" accept="image/*" onChange={(event) => uploadBackground(event.target.files?.[0])} /><small>Image files up to 1 MB. The QR code stays fixed in the bottom-right corner.</small></label>
-                {design.backgroundImage && <button className="button button-quiet button-danger print-remove-background" type="button" onClick={() => updateDesign('backgroundImage', '')}>Remove background design</button>}
+                  <label>Upload background design<input type="file" accept="image/*" onChange={(event) => uploadBackground(event.target.files?.[0])} /><small>Image files up to 1 MB. The QR code stays fixed in the bottom-right corner.</small></label>
+                  {design.backgroundImage && <button className="button button-quiet button-danger print-remove-background" type="button" onClick={() => updateDesign('backgroundImage', '')}>Remove background design</button>}
+                </details>
               </div>
               {qrLoading && <p className="print-status">Preparing unique QR codes…</p>}
               <div className="print-settings-actions">
@@ -1497,6 +1922,7 @@ function TeachersPage() {
       .catch((cause) => setError(messageFrom(cause)))
       .finally(() => setLoading(false));
   }, []);
+  const activeTeachers = teachers.filter((teacher) => teacher.is_active);
 
   function startAddTeacher() {
     setTeacherForm({ full_name: '', designation: '', department: '', personalized_message: '' });
@@ -1536,7 +1962,7 @@ function TeachersPage() {
     const teacherKey = (teacher: Pick<TeacherFormData, 'full_name' | 'designation' | 'department' | 'personalized_message'>) =>
       [teacher.full_name, teacher.designation, teacher.department, teacher.personalized_message]
         .map((value) => value.trim().toLowerCase()).join('\u001f');
-    const duplicate = teachers.find((teacher) =>
+    const duplicate = activeTeachers.find((teacher) =>
       teacher.id !== editingTeacherId &&
       teacherKey({
         full_name: teacher.full_name,
@@ -1574,13 +2000,13 @@ function TeachersPage() {
   }
 
   async function removeTeacher(teacher: Teacher) {
-    if (!window.confirm(`Delete ${teacher.full_name}? Existing invitations and RSVP records will be preserved, and this teacher will no longer be available for new invitations.`)) return;
+    if (!window.confirm(`Delete ${teacher.full_name}? Their invitations and RSVP records will also be permanently deleted.`)) return;
     setError('');
     setImportMessage('');
     try {
       await deleteTeacher(teacher.id);
       setTeachers((current) => current.map((item) => item.id === teacher.id ? { ...item, is_active: false } : item));
-      setImportMessage(`${teacher.full_name} was removed from active teachers. Existing invitation history was preserved.`);
+      setImportMessage(`${teacher.full_name}, their invitations, and RSVP records were deleted.`);
     } catch (cause) {
       setError(messageFrom(cause));
     }
@@ -1592,7 +2018,7 @@ function TeachersPage() {
     setImportMessage('');
     try {
       const { teachers: importedTeachers, skippedRows } = await parseTeacherWorkbook(file);
-      const existingKeys = new Set(teachers.map((teacher) => [
+      const existingKeys = new Set(activeTeachers.map((teacher) => [
         teacher.full_name,
         teacher.designation ?? '',
         teacher.department ?? '',
@@ -1633,7 +2059,7 @@ function TeachersPage() {
     setError('');
     try {
       const XLSX = await import('xlsx');
-      const rows = teachers.map((teacher) => ({
+      const rows = activeTeachers.map((teacher) => ({
         'Full Name': teacher.full_name,
         Designation: teacher.designation ?? '',
         Department: teacher.department ?? '',
@@ -1719,10 +2145,10 @@ function TeachersPage() {
       )}
       <p className="teacher-import-help">Excel columns: Full Name (required), Designation, Department, Personalized Message.</p>
       <section className="panel table-panel">
-        <div className="panel-heading"><div><h2>Teacher directory</h2><p>{teachers.length} teachers in your workspace.</p></div><span className="count-badge">{teachers.length}</span></div>
-        {loading ? <div className="empty-state">Loading teachers…</div> : error && !teachers.length ? <div className="empty-state">Teachers could not be loaded.</div> : teachers.length ? (
+        <div className="panel-heading"><div><h2>Teacher directory</h2><p>{activeTeachers.length} teachers in your workspace.</p></div><span className="count-badge">{activeTeachers.length}</span></div>
+        {loading ? <div className="empty-state">Loading teachers…</div> : error && !activeTeachers.length ? <div className="empty-state">Teachers could not be loaded.</div> : activeTeachers.length ? (
           <div className="table-scroll"><table><thead><tr><th>NAME</th><th>DESIGNATION</th><th>DEPARTMENT</th><th>STATUS</th><th>ACTIONS</th></tr></thead><tbody>
-            {teachers.map((teacher) => {
+            {activeTeachers.map((teacher) => {
               const teacherInvitations = invitations.filter((invite) => invite.guest_id === teacher.id);
               const hasActiveInvitation = teacherInvitations.some((invite) => invite.invitation_status === 'active');
               const isActive = teacher.is_active && (teacherInvitations.length === 0 || hasActiveInvitation);
@@ -2393,9 +2819,11 @@ function InvitationPage() {
   const { token = '' } = useParams();
   const { logoUrl } = useAppBranding();
   const [invitation, setInvitation] = useState<ValidateInvitationResponse['invitation'] | null>(null);
+  const [qrTheme, setQrTheme] = useState<QrLandingPageTheme | null>(null);
   const [loading, setLoading] = useState(true);
   const [envelopeComplete, setEnvelopeComplete] = useState(false);
   const [error, setError] = useState('');
+  const [qrThemeError, setQrThemeError] = useState('');
   const [response, setResponse] = useState<'accepted' | 'maybe' | 'declined'>('accepted');
   const [guestName, setGuestName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -2412,10 +2840,19 @@ function InvitationPage() {
         if (!result.valid || !result.invitation) throw new Error(result.error ?? 'This invitation is not available.');
         setInvitation(result.invitation);
         setGuestName(result.invitation.teacher?.full_name ?? '');
+        setSubmitted(result.rsvp_submitted ?? false);
       })
       .catch((cause) => setError(messageFrom(cause)))
       .finally(() => setLoading(false));
   }, [token]);
+
+  useEffect(() => {
+    let active = true;
+    fetchQrLandingPageTheme()
+      .then((theme) => active && setQrTheme(theme))
+      .catch((cause) => active && setQrThemeError(messageFrom(cause)));
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (loading || !envelopeComplete) return;
@@ -2441,6 +2878,24 @@ function InvitationPage() {
   const event = invitation?.event;
   const teacher = invitation?.teacher;
   const page = { ...defaultLandingPageConfig, ...(invitation?.landing_page_config ?? {}) };
+  const sharedThemeConfigured = qrTheme !== null && landingPageFontKeys.some((key) =>
+    Object.prototype.hasOwnProperty.call(qrTheme.font_families, key) ||
+    Object.prototype.hasOwnProperty.call(qrTheme.font_colors, key)
+  );
+  const pageFontStyle = (key: InvitationLandingPageFontKey, fallbackKey?: InvitationLandingPageFontKey) => {
+    const fontFamilies = sharedThemeConfigured ? qrTheme?.font_families : page.font_families;
+    const fontColors = sharedThemeConfigured ? qrTheme?.font_colors : page.font_colors;
+    const fontFamily = fontFamilies?.[key]?.trim() ||
+      (fallbackKey ? fontFamilies?.[fallbackKey]?.trim() : '') ||
+      (sharedThemeConfigured ? qrTheme?.font_family : page.font_family);
+    const color = fontColors?.[key]?.trim() ||
+      (fallbackKey ? fontColors?.[fallbackKey]?.trim() : '');
+    return {
+      fontFamily: fontFamily ? fontFamilyValue(fontFamily) : undefined,
+      color: color || undefined,
+    };
+  };
+  const defaultPageFont = fontFamilyValue(sharedThemeConfigured ? qrTheme?.font_family ?? '' : page.font_family);
   const eventDateValue = event?.event_date || event?.starts_at;
   const eventDateTimestamp = eventDateValue ? new Date(eventDateValue).getTime() : Number.NaN;
   const configuredCountdownTimestamp = event?.countdown_at ? new Date(event.countdown_at).getTime() : Number.NaN;
@@ -2536,7 +2991,10 @@ function InvitationPage() {
   }
 
   return (
-    <main className={`invite-screen festival-invite-screen qr-template${envelopeComplete ? ' qr-template-page-reveal' : ''}`}>
+    <main
+      className={`invite-screen festival-invite-screen qr-template${envelopeComplete ? ' qr-template-page-reveal' : ''}${defaultPageFont.trim() ? ' qr-template-custom-font' : ''}`}
+      style={{ fontFamily: defaultPageFont.trim() || undefined }}
+    >
       {!envelopeComplete ? <TeacherEnvelopeIntro ready={!loading} onOpen={() => setEnvelopeComplete(true)} /> : error && !invitation ? <div className="invite-card invite-error"><span className="event-card-icon"><DoorOpen size={20} /></span><h1>Invitation unavailable</h1><p>{error}</p></div> : invitation && event ? (
         <>
           {page.page_background_url && (
@@ -2555,60 +3013,61 @@ function InvitationPage() {
                 {logoUrl
                   ? <img src={logoUrl} alt="" />
                   : <span className="qr-template-logo-placeholder">HDU</span>}
-                <span>{page.university_heading}</span>
+                <span style={pageFontStyle('university_heading')}>{page.university_heading}</span>
               </a>
               <nav aria-label="Invitation navigation">
-                <a href="#event-details">Event details</a>
-                <a href="#rsvp">RSVP</a>
+                <a href="#event-details" style={pageFontStyle('navigation')}>Event details</a>
+                <a href="#rsvp" style={pageFontStyle('navigation')}>RSVP</a>
                 <button className="qr-template-audio" type="button" onClick={() => void toggleMusic()} disabled={!page.music_url} aria-label={musicPlaying ? 'Pause background music' : 'Play background music'} title={page.music_url ? 'Toggle background music' : 'No background music set'}>
                   {musicPlaying ? <Volume2 size={17} /> : <VolumeX size={17} />}
                 </button>
               </nav>
             </header>
             {error && <div className="qr-template-error"><Notice tone="error">{error}</Notice></div>}
+            {qrThemeError && <div className="qr-template-error"><Notice tone="error">{qrThemeError}</Notice></div>}
             <div className="qr-template-hero-content" id="invitation-top" data-qr-reveal="">
-              <p className="qr-template-eyebrow">{page.invitation_badge}</p>
-              <h1>{page.festival_title}</h1>
-              <p className="qr-template-tagline">{page.tagline}</p>
+              <p className="qr-template-eyebrow" style={pageFontStyle('invitation_badge')}>{page.invitation_badge}</p>
+              <h1 style={pageFontStyle('festival_title')}>{page.festival_title}</h1>
+              <p className="qr-template-tagline" style={pageFontStyle('tagline')}>{page.tagline}</p>
               <article className="qr-template-cover">
-                <span className="qr-template-cover-kicker">{page.university_heading}</span>
-                <p className="qr-template-cover-invite">You are warmly invited</p>
-                <h2>{guestHeading || 'Distinguished Guest'}</h2>
-                {teacher?.department && <p className="qr-template-cover-department">{teacher.department}</p>}
-                <p className="qr-template-cover-message">{invitation.letter_content || teacher?.personalized_message || `Please join us for ${event.title}. We would be honored by your presence.`}</p>
-                {eventDateLabel && <p className="qr-template-cover-date">{eventDateLabel}{eventTimeLabel ? ` · ${eventTimeLabel}` : ''}</p>}
+                <span className="qr-template-cover-kicker" style={pageFontStyle('university_heading')}>{page.university_heading}</span>
+                <p className="qr-template-cover-invite" style={pageFontStyle('cover_invitation')}>You are warmly invited</p>
+                <h2 style={pageFontStyle('teacher_name')}>{guestHeading || 'Distinguished Guest'}</h2>
+                {teacher?.department && <p className="qr-template-cover-department" style={pageFontStyle('teacher_department')}>{teacher.department}</p>}
+                <p className="qr-template-cover-message" style={pageFontStyle('letter_message')}>{invitation.letter_content || teacher?.personalized_message || `Please join us for ${event.title}. We would be honored by your presence.`}</p>
+                {eventDateLabel && <p className="qr-template-cover-date" style={pageFontStyle('event_date')}>{eventDateLabel}{eventTimeLabel ? ` · ${eventTimeLabel}` : ''}</p>}
               </article>
-              <a className="qr-template-scroll-link" href="#welcome">Discover the invitation <span aria-hidden="true">↓</span></a>
+              <a className="qr-template-scroll-link" href="#welcome" style={pageFontStyle('cover_navigation')}>Discover the invitation <span aria-hidden="true">↓</span></a>
             </div>
           </section>
 
           <section className="qr-template-section qr-template-welcome" id="welcome" data-qr-reveal="">
-            <p className="qr-template-eyebrow">A note for you</p>
-            <h2>A warm welcome</h2>
-            <p>{event.description || page.tagline}</p>
+            <p className="qr-template-eyebrow" style={pageFontStyle('welcome_eyebrow')}>A note for you</p>
+            <h2 style={pageFontStyle('welcome_heading')}>A warm welcome</h2>
+            <p style={pageFontStyle('welcome_body')}>{event.description || page.tagline}</p>
             {teacher?.personalized_message && teacher.personalized_message !== invitation.letter_content && (
-              <p className="qr-template-personal-note">{teacher.personalized_message}</p>
+              <p className="qr-template-personal-note" style={pageFontStyle('personal_note')}>{teacher.personalized_message}</p>
             )}
           </section>
 
           <section className="qr-template-section qr-template-details" id="event-details" data-qr-reveal="">
-            <p className="qr-template-eyebrow">The gathering</p>
-            <h2>Event details</h2>
-            <p className="qr-template-section-intro">Everything you need to know about the celebration.</p>
+            <p className="qr-template-eyebrow" style={pageFontStyle('section_eyebrow')}>The gathering</p>
+            <h2 style={pageFontStyle('details_heading')}>Event details</h2>
+            <p className="qr-template-section-intro" style={pageFontStyle('details_intro')}>Everything you need to know about the celebration.</p>
             <div className="qr-template-detail-grid">
-              <article data-qr-reveal=""><span>Event</span><strong>{event.title}</strong></article>
-              <article data-qr-reveal=""><span>Date</span><strong>{eventDateLabel || 'To be announced'}</strong></article>
-              <article data-qr-reveal=""><span>Time</span><strong>{eventTimeLabel || 'To be announced'}</strong>{eventTimeLabel && <small>{event.event_timezone}</small>}</article>
-              <article data-qr-reveal=""><span>Venue</span><strong>{page.venue_name || event.venue || 'To be announced'}</strong></article>
-              <article data-qr-reveal=""><span>Dress code</span><strong>{page.dress_code || 'As you feel comfortable'}</strong></article>
-              <article data-qr-reveal=""><span>Hosted by</span><strong>{page.organizer || event.organizer || page.university_heading}</strong></article>
+              <article data-qr-reveal=""><span style={pageFontStyle('detail_label')}>Event</span><strong style={pageFontStyle('event_title', 'detail_value')}>{event.title}</strong></article>
+              <article data-qr-reveal=""><span style={pageFontStyle('detail_label')}>Date</span><strong style={pageFontStyle('event_date', 'detail_value')}>{eventDateLabel || 'To be announced'}</strong></article>
+              <article data-qr-reveal=""><span style={pageFontStyle('detail_label')}>Time</span><strong style={pageFontStyle('event_time', 'detail_value')}>{eventTimeLabel || 'To be announced'}</strong>{eventTimeLabel && <small style={pageFontStyle('event_meta')}>{event.event_timezone}</small>}</article>
+              <article data-qr-reveal=""><span style={pageFontStyle('detail_label')}>Venue</span><strong style={pageFontStyle('venue_name', 'detail_value')}>{page.venue_name || event.venue || 'To be announced'}</strong></article>
+              <article data-qr-reveal=""><span style={pageFontStyle('detail_label')}>Dress code</span><strong style={pageFontStyle('dress_code', 'detail_value')}>{page.dress_code || 'As you feel comfortable'}</strong></article>
+              <article data-qr-reveal=""><span style={pageFontStyle('detail_label')}>Hosted by</span><strong style={pageFontStyle('organizer', 'detail_value')}>{page.organizer || event.organizer || page.university_heading}</strong></article>
             </div>
           </section>
 
           {Number.isFinite(eventTimestamp) && (
             <section className="qr-template-countdown" aria-label={page.countdown_label} data-qr-reveal="">
-              <p className="qr-template-eyebrow">Until we celebrate</p>
-              <h2>{page.countdown_label}</h2>
+              <p className="qr-template-eyebrow" style={pageFontStyle('countdown_eyebrow')}>Until we celebrate</p>
+              <h2 style={pageFontStyle('countdown_label')}>{page.countdown_label}</h2>
               <div className="qr-template-countdown-grid">
                 {([
                   ['days', countdown.days],
@@ -2616,26 +3075,27 @@ function InvitationPage() {
                   ['minutes', countdown.minutes],
                   ['seconds', countdown.seconds],
                 ] as const).map(([label, value]) => (
-                  <div key={label}><strong>{String(value).padStart(2, '0')}</strong><span>{label}</span></div>
+                  <div key={label}><strong style={pageFontStyle('countdown_value')}>{String(value).padStart(2, '0')}</strong><span style={pageFontStyle('countdown_unit')}>{label}</span></div>
                 ))}
               </div>
             </section>
           )}
 
           <section className="qr-template-section qr-template-location" data-qr-reveal="">
-            <p className="qr-template-eyebrow">Find your way</p>
-            <h2>The location</h2>
+            <p className="qr-template-eyebrow" style={pageFontStyle('location_eyebrow')}>Find your way</p>
+            <h2 style={pageFontStyle('location_heading')}>The location</h2>
             <div className={`qr-template-location-card${event.poster_url ? ' has-poster' : ''}`}>
               <div>
-                <span className="qr-template-eyebrow">Where we’ll meet</span>
-                <h3>{page.venue_name || event.venue || 'Venue to be announced'}</h3>
-                {page.venue_detail && <p>{page.venue_detail}</p>}
-                {(page.address || event.address) && <p>{page.address || event.address}</p>}
-                {page.subway_guide && <p><strong>Getting there:</strong> {page.subway_guide}</p>}
-                {(page.campus_gate || page.campus_gate_chinese) && <p><strong>Campus gate:</strong> {[page.campus_gate, page.campus_gate_chinese].filter(Boolean).join(' · ')}</p>}
+                <span className="qr-template-eyebrow" style={pageFontStyle('location_label')}>Where we’ll meet</span>
+                <h3 style={pageFontStyle('venue_name')}>{page.venue_name || event.venue || 'Venue to be announced'}</h3>
+                {page.venue_detail && <p style={pageFontStyle('venue_detail')}>{page.venue_detail}</p>}
+                {(page.address || event.address) && <p style={pageFontStyle('address')}>{page.address || event.address}</p>}
+                {page.subway_guide && <p style={pageFontStyle('subway_guide')}><strong style={pageFontStyle('location_label')}>Getting there:</strong> {page.subway_guide}</p>}
+                {page.campus_gate && <p style={pageFontStyle('campus_gate')}><strong style={pageFontStyle('location_label')}>Campus gate:</strong> {page.campus_gate}</p>}
+                {page.campus_gate_chinese && <p style={pageFontStyle('campus_gate_chinese')}><strong style={pageFontStyle('location_label')}>Campus gate:</strong> {page.campus_gate_chinese}</p>}
                 <div className="qr-template-map-links">
-                  {page.amap_url && <a href={page.amap_url} target="_blank" rel="noreferrer">Open in Amap</a>}
-                  {page.tencent_map_url && <a href={page.tencent_map_url} target="_blank" rel="noreferrer">Open in Tencent Maps</a>}
+                  {page.amap_url && <a href={page.amap_url} target="_blank" rel="noreferrer" style={pageFontStyle('amap_url')}>Open in Amap</a>}
+                  {page.tencent_map_url && <a href={page.tencent_map_url} target="_blank" rel="noreferrer" style={pageFontStyle('tencent_map_url')}>Open in Tencent Maps</a>}
                 </div>
               </div>
               {event.poster_url && <img src={event.poster_url} alt={`${event.title} event poster`} />}
@@ -2643,25 +3103,25 @@ function InvitationPage() {
           </section>
 
           <section className="qr-template-section qr-template-rsvp" id="rsvp" ref={rsvpRef} data-qr-reveal="">
-            <p className="qr-template-eyebrow">We hope you can join us</p>
+            <p className="qr-template-eyebrow" style={pageFontStyle('rsvp_eyebrow')}>We hope you can join us</p>
             {submitted ? (
               <div className="qr-template-thanks">
                 <span className="success-check"><Check size={21} /></span>
-                <h2>Thank you, {guestName}</h2>
-                <p>Your RSVP has been recorded. We look forward to celebrating with you.</p>
+                <h2 style={pageFontStyle('rsvp_heading')}>Thank you, {guestName}</h2>
+                <p style={pageFontStyle('rsvp_body')}>Your RSVP has been recorded. We look forward to celebrating with you.</p>
               </div>
             ) : (
               <>
-                <h2>Kindly RSVP</h2>
-                <p>Please let us know if you can join us.</p>
+                <h2 style={pageFontStyle('rsvp_heading')}>Kindly RSVP</h2>
+                <p style={pageFontStyle('rsvp_body')}>Please let us know if you can join us.</p>
                 {!rsvpOpen ? (
-                  <button className="qr-template-rsvp-button" type="button" onClick={showRSVPForm}>Confirm your attendance</button>
+                  <button className="qr-template-rsvp-button" type="button" style={pageFontStyle('rsvp_button')} onClick={showRSVPForm}>Confirm your attendance</button>
                 ) : (
-                  <form className="qr-template-rsvp-form" onSubmit={sendRSVP}>
-                    <label>Your name<input required value={guestName} onChange={(e) => setGuestName(e.target.value)} /></label>
-                    <label>Response<select value={response} onChange={(e) => setResponse(e.target.value as typeof response)}><option value="accepted">Accept with pleasure</option><option value="maybe">Maybe</option><option value="declined">Unable to attend</option></select></label>
+                  <form className="qr-template-rsvp-form" style={pageFontStyle('rsvp_form')} onSubmit={sendRSVP}>
+                    <label style={pageFontStyle('rsvp_form')}>Your name<input required value={guestName} onChange={(e) => setGuestName(e.target.value)} /></label>
+                    <label style={pageFontStyle('rsvp_form')}>Response<select value={response} onChange={(e) => setResponse(e.target.value as typeof response)}><option value="accepted">Accept with pleasure</option><option value="maybe">Maybe</option><option value="declined">Unable to attend</option></select></label>
                     {error && <Notice tone="error">{error}</Notice>}
-                    <button className="qr-template-rsvp-button" type="submit" disabled={busy}>{busy ? 'Sending response…' : 'Send RSVP'}<Send size={15} /></button>
+                    <button className="qr-template-rsvp-button" type="submit" style={pageFontStyle('rsvp_button')} disabled={busy}>{busy ? 'Sending response…' : 'Send RSVP'}<Send size={15} /></button>
                   </form>
                 )}
               </>
@@ -2669,12 +3129,18 @@ function InvitationPage() {
           </section>
 
           <footer className="qr-template-footer" data-qr-reveal="">
-            <p className="qr-template-eyebrow">With all our love</p>
-            <h2>Thank you</h2>
-            <p>We look forward to celebrating together.</p>
-            <p className="qr-template-footer-organizer">{page.organizer || event.organizer || page.university_heading}</p>
-            {(page.wechat || page.email) && <p className="qr-template-footer-contact">{[page.wechat && `WeChat: ${page.wechat}`, page.email && `Email: ${page.email}`].filter(Boolean).join(' · ')}</p>}
-            <a href="/admin/login">Committee admin portal</a>
+            <p className="qr-template-eyebrow" style={pageFontStyle('footer_eyebrow')}>With all our love</p>
+            <h2 style={pageFontStyle('footer_heading')}>Thank you</h2>
+            <p style={pageFontStyle('footer_body')}>We look forward to celebrating together.</p>
+            <p className="qr-template-footer-organizer" style={pageFontStyle('organizer')}>{page.organizer || event.organizer || page.university_heading}</p>
+            {(page.wechat || page.email) && (
+              <p className="qr-template-footer-contact">
+                {page.wechat && <span style={pageFontStyle('wechat')}>WeChat: {page.wechat}</span>}
+                {page.wechat && page.email && ' · '}
+                {page.email && <span style={pageFontStyle('email')}>Email: {page.email}</span>}
+              </p>
+            )}
+            <a href="/admin/login" style={pageFontStyle('footer_link')}>Committee admin portal</a>
           </footer>
         </>
       ) : null}

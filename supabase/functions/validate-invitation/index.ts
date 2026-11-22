@@ -184,6 +184,27 @@ serve(async (req: Request) => {
       );
     }
 
+    const { data: existingRsvp, error: rsvpError } = await supabase
+      .from("rsvps")
+      .select("id")
+      .eq("guest_id", invitation.guest_id)
+      .eq("event_id", invitation.event_id)
+      .eq("invitation_category", "teacher")
+      .limit(1)
+      .maybeSingle();
+
+    if (rsvpError) {
+      console.error("Invitation RSVP lookup error:", rsvpError);
+
+      return jsonResponse(
+        {
+          error: "Failed to retrieve RSVP status",
+          details: rsvpError.message,
+        },
+        500
+      );
+    }
+
     const eventData = invitation.event as
       | Record<string, unknown>
       | null;
@@ -207,6 +228,7 @@ serve(async (req: Request) => {
 
     return jsonResponse({
       valid: true,
+      rsvp_submitted: Boolean(existingRsvp),
       invitation: {
         ...invitation,
         teacher,

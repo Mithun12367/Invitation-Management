@@ -459,18 +459,18 @@ serve(async (req: Request) => {
           }, 400);
         }
 
-        const results = [];
+        let generated = 0;
         const failures = [];
 
         for (const teacherId of teacher_ids) {
           try {
-            const invitation = await createInvitation(
+            await createInvitation(
               event_id,
               teacherId,
               template_id,
             );
 
-            results.push(invitation);
+            generated += 1;
           } catch (error) {
             failures.push({
               teacher_id: teacherId,
@@ -483,10 +483,9 @@ serve(async (req: Request) => {
 
         return jsonResponse({
           success: failures.length === 0,
-          message: `${results.length} invitations generated successfully`,
-          generated: results.length,
+          message: `${generated} invitations generated successfully`,
+          generated,
           failed: failures.length,
-          invitations: results,
           failures,
         });
       }

@@ -100,6 +100,8 @@ serve(async (req: Request) => {
       );
     }
 
+    let teacherGuestId: string | null = null;
+
     if (invitation_category === "teacher") {
       if (!invitation_id || typeof invitation_id !== "string") {
         return jsonResponse(
@@ -175,7 +177,7 @@ serve(async (req: Request) => {
       const { data: invitation, error: invitationError } =
         await supabase
           .from("invitations")
-          .select("id, event_id, status")
+          .select("id, event_id, guest_id, status")
           .eq("id", invitation_id)
           .eq("qr_token_hash", tokenHash)
           .maybeSingle();
@@ -218,6 +220,8 @@ serve(async (req: Request) => {
           403
         );
       }
+
+      teacherGuestId = invitation.guest_id;
     }
 
     // ----------------------------------------
@@ -241,17 +245,30 @@ serve(async (req: Request) => {
     // ----------------------------------------
 
     if (invitation_category === "teacher") {
+      if (!teacherGuestId) {
+        return jsonResponse(
+          { error: "Teacher invitation is missing its guest" },
+          500
+        );
+      }
+
       rsvpData.invitation_id = invitation_id;
+      rsvpData.guest_id = teacherGuestId;
 
       const { data, error } = await supabase
         .from("rsvps")
-        .upsert(rsvpData, {
-          onConflict: "invitation_id",
-        })
+        .insert(rsvpData)
         .select()
         .single();
 
       if (error) {
+        if (error.code === "23505") {
+          return jsonResponse(
+            { error: "An RSVP has already been submitted for this invitation." },
+            409
+          );
+        }
+
         console.error("Teacher RSVP submission error:", error);
 
         return jsonResponse(

@@ -93,7 +93,63 @@ export interface InvitationTemplate {
   updated_at: string;
 }
 
+export type InvitationLandingPageFontKey =
+  | 'university_heading'
+  | 'festival_title'
+  | 'tagline'
+  | 'invitation_badge'
+  | 'countdown_label'
+  | 'venue_name'
+  | 'venue_detail'
+  | 'address'
+  | 'dress_code'
+  | 'subway_guide'
+  | 'campus_gate'
+  | 'campus_gate_chinese'
+  | 'amap_url'
+  | 'tencent_map_url'
+  | 'organizer'
+  | 'wechat'
+  | 'email'
+  | 'letter_message'
+  | 'navigation'
+  | 'cover_invitation'
+  | 'cover_navigation'
+  | 'teacher_name'
+  | 'teacher_department'
+  | 'event_title'
+  | 'event_date'
+  | 'event_time'
+  | 'event_meta'
+  | 'welcome_eyebrow'
+  | 'welcome_heading'
+  | 'welcome_body'
+  | 'personal_note'
+  | 'section_eyebrow'
+  | 'details_heading'
+  | 'details_intro'
+  | 'detail_label'
+  | 'detail_value'
+  | 'countdown_eyebrow'
+  | 'countdown_value'
+  | 'countdown_unit'
+  | 'location_eyebrow'
+  | 'location_heading'
+  | 'location_label'
+  | 'rsvp_eyebrow'
+  | 'rsvp_heading'
+  | 'rsvp_body'
+  | 'rsvp_button'
+  | 'rsvp_form'
+  | 'footer_eyebrow'
+  | 'footer_heading'
+  | 'footer_body'
+  | 'footer_link';
+
 export interface InvitationLandingPageConfig {
+  font_family: string;
+  font_families: Partial<Record<InvitationLandingPageFontKey, string>>;
+  font_colors: Partial<Record<InvitationLandingPageFontKey, string>>;
   university_heading: string;
   festival_title: string;
   tagline: string;
@@ -117,6 +173,11 @@ export interface InvitationLandingPageConfig {
   page_background_overlay: number;
   confetti_enabled: boolean;
 }
+
+export type QrLandingPageTheme = Pick<
+  InvitationLandingPageConfig,
+  'font_family' | 'font_families' | 'font_colors'
+>;
 
 // ─── Invitations ───
 
@@ -274,6 +335,7 @@ export interface PaginatedResponse<T> {
 
 export interface ValidateInvitationResponse {
   valid: boolean;
+  rsvp_submitted?: boolean;
   invitation?: {
     id: string;
     status: InvitationStatus;

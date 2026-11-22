@@ -19,6 +19,7 @@ import type {
   TeacherFormData,
   EventFormData,
   InvitationLandingPageConfig,
+  QrLandingPageTheme,
 } from '../types';
 
 // =========================================================
@@ -115,7 +116,7 @@ export async function submitRSVP(
     { body: payload }
   );
 
-  throwIfError(error);
+  if (error) throw await edgeFunctionError(error);
   return data as { success: boolean };
 }
 
@@ -204,6 +205,65 @@ export async function saveAppLogo(url: string): Promise<void> {
   const { error } = await supabase
     .from('app_settings')
     .upsert({ setting_key: 'app_logo_url', setting_value: url }, { onConflict: 'setting_key' });
+
+  throwIfError(error);
+}
+
+const qrLandingPageThemeSettingKey = 'qr_landing_page_theme';
+const defaultQrLandingPageTheme: QrLandingPageTheme = {
+  font_family: '',
+  font_families: {},
+  font_colors: {},
+};
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.values(value).every((item) => typeof item === 'string');
+}
+
+export async function fetchQrLandingPageTheme(): Promise<QrLandingPageTheme> {
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('setting_value')
+    .eq('setting_key', qrLandingPageThemeSettingKey)
+    .maybeSingle();
+
+  throwIfError(error);
+  if (!data?.setting_value) return defaultQrLandingPageTheme;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(data.setting_value);
+  } catch (cause) {
+    throw new Error(`Saved QR page styles could not be read: ${cause instanceof Error ? cause.message : 'Invalid JSON.'}`);
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Saved QR page styles have an invalid format.');
+  }
+
+  const record = parsed as Record<string, unknown>;
+  const fontFamilies = record.font_families ?? {};
+  const fontColors = record.font_colors ?? {};
+  if (!isStringRecord(fontFamilies) || !isStringRecord(fontColors)) {
+    throw new Error('Saved QR page font styles have an invalid format.');
+  }
+
+  return {
+    font_family: typeof record.font_family === 'string' ? record.font_family : '',
+    font_families: fontFamilies,
+    font_colors: fontColors,
+  };
+}
+
+export async function saveQrLandingPageTheme(theme: QrLandingPageTheme): Promise<void> {
+  const { error } = await supabase
+    .from('app_settings')
+    .upsert({
+      setting_key: qrLandingPageThemeSettingKey,
+      setting_value: JSON.stringify(theme),
+    }, { onConflict: 'setting_key' });
 
   throwIfError(error);
 }
@@ -356,12 +416,10 @@ export async function updateGuest(
   return data as Guest;
 }
 
-// Soft deletion preserves historical invitations and RSVP records.
 export async function deleteTeacher(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('guests')
-    .update({ is_active: false })
-    .eq('id', id);
+  const { error } = await supabase.rpc('delete_teacher_with_history', {
+    p_teacher_id: id,
+  });
 
   throwIfError(error);
 }
@@ -523,10 +581,9 @@ export async function revokeInvitation(id: string): Promise<void> {
 }
 
 export async function deleteInvitation(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('invitations')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.rpc('delete_invitation_with_rsvps', {
+    p_invitation_id: id,
+  });
 
   throwIfError(error);
 }
